@@ -1,0 +1,82 @@
+[
+  {
+    "id": "two-sum",
+    "title": "Two Sum",
+    "difficulty": "Easy",
+    "patterns": ["Hash map", "Array"],
+    "summary": "Practice trading a little extra memory for a faster search through a sequence.",
+    "prompt": {
+      "description": "Write a function that finds two different positions in an integer list whose values add up to a given target. Return the positions in either order, and assume one valid pair exists.",
+      "examples": [
+        { "input": "values = [8, 3, 12, 5], target = 8", "output": "[1, 3]", "explanation": "The values at positions 1 and 3 total 8." },
+        { "input": "values = [-2, 7, 4], target = 2", "output": "[0, 2]", "explanation": "The values at positions 0 and 2 total 2." }
+      ],
+      "constraints": ["The list contains at least two integers.", "Do not use the same position twice.", "Aim for better than checking every pair when possible."]
+    },
+    "externalUrl": "https://leetcode.com/problems/two-sum/"
+  },
+  {
+    "id": "valid-parentheses",
+    "title": "Valid Parentheses",
+    "difficulty": "Easy",
+    "patterns": ["Stack", "String"],
+    "summary": "Use a last-in-first-out structure to reason about nested delimiters.",
+    "prompt": {
+      "description": "Given a string made only of bracket characters, decide whether every opening bracket is closed by the matching type in the correct nested order.",
+      "examples": [
+        { "input": "text = \"{[()]}\"", "output": "true", "explanation": "Each pair closes in reverse order of opening." },
+        { "input": "text = \"([)]\"", "output": "false", "explanation": "The closing bracket types do not match the nesting order." }
+      ],
+      "constraints": ["The input contains only (), [], and {} characters.", "An empty string is valid."]
+    },
+    "externalUrl": "https://leetcode.com/problems/valid-parentheses/"
+  },
+  {
+    "id": "best-time-to-buy-and-sell-stock",
+    "title": "Best Time to Buy and Sell Stock",
+    "difficulty": "Easy",
+    "patterns": ["Array", "Greedy"],
+    "summary": "Track a running opportunity while scanning time-ordered values once.",
+    "prompt": {
+      "description": "Given daily prices for one asset, choose one day to buy and a later day to sell. Return the largest positive gain, or zero if no profitable trade is possible.",
+      "examples": [
+        { "input": "prices = [9, 4, 8, 2, 10]", "output": "8", "explanation": "Buying at 2 and selling later at 10 gives a gain of 8." },
+        { "input": "prices = [11, 7, 5, 3]", "output": "0", "explanation": "Every later price is lower than the earlier prices." }
+      ],
+      "constraints": ["There is at least one recorded day.", "The buy day must come before the sell day.", "Prefer a single left-to-right pass."]
+    },
+    "externalUrl": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/"
+  },
+  {
+    "id": "binary-search",
+    "title": "Binary Search",
+    "difficulty": "Easy",
+    "patterns": ["Binary search", "Array"],
+    "summary": "Narrow a sorted search space by repeatedly choosing a midpoint.",
+    "prompt": {
+      "description": "Create a function that locates a target in an ascending integer list. Return its position when present, or -1 when the target is absent.",
+      "examples": [
+        { "input": "values = [-8, -1, 6, 14, 23], target = 14", "output": "3", "explanation": "The target is stored at position 3." },
+        { "input": "values = [2, 9, 17], target = 4", "output": "-1", "explanation": "The target does not occur in the list." }
+      ],
+      "constraints": ["The input list is sorted in ascending order.", "All values are distinct.", "Aim for logarithmic search time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/binary-search/"
+  },
+  {
+    "id": "merge-intervals",
+    "title": "Merge Intervals",
+    "difficulty": "Medium",
+    "patterns": ["Sorting", "Intervals"],
+    "summary": "Order ranges and combine neighboring spans when their boundaries overlap.",
+    "prompt": {
+      "description": "Given a collection of numeric ranges, combine ranges that share any values and return the resulting non-overlapping ranges in ascending order.",
+      "examples": [
+        { "input": "ranges = [[2, 6], [4, 9], [13, 15]]", "output": "[[2, 9], [13, 15]]", "explanation": "The first two ranges overlap and form one range." },
+        { "input": "ranges = [[5, 7], [1, 3]]", "output": "[[1, 3], [5, 7]]", "explanation": "The ranges are separate and are returned in order." }
+      ],
+      "constraints": ["Each range has a start no greater than its end.", "Input ranges may be in any order.", "Touching endpoints count as overlapping."]
+    },
+    "externalUrl": "https://leetcode.com/problems/merge-intervals/"
+  }
+]
