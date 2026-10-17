@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera Debug</title>
+<style>
+  :root { --bg: #f6f6f4; --fg: #1d1d1b; --muted: #6b6b66; --card: #fff; --line: #ddd;
+          --ok: #1f7a3d; --warn: #a15c00; --bad: #b3261e; --box: #1565c0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --fg: #ececea; --muted: #9a9a94; --card: #20201e; --line: #3a3a37;
+            --ok: #5cc27f; --warn: #e0a24a; --bad: #f2867e; --box: #64a8ff; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg);
+         font: 14px/1.45 system-ui, sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line);
+                   background: var(--card); color: var(--fg); }
+  button { cursor: pointer; }
+  .grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 12px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .stage { position: relative; }
+  video, #overlay { width: 100%; display: block; border-radius: 6px; }
+  #overlay { position: absolute; inset: 0; height: 100%; pointer-events: none; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line);
+          font-size: 12px; margin-right: 4px; }
+  .on { color: var(--ok); border-color: var(--ok); }
+  .off { color: var(--muted); }
+  pre { margin: 0; white-space: pre-wrap; font: 13px/1.5 ui-monospace, monospace; }
+  .finding { border-left: 3px solid var(--warn); padding: 4px 8px; margin: 6px 0; }
+  .finding.t1, .finding.t2 { border-color: var(--bad); }
+  .finding.resolved { opacity: .5; }
+  .muted { color: var(--muted); }
+  #log { max-height: 160px; overflow: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Whiteboard camera debug</h1>
+<div class="bar">
+  <select id="problem"></select>
+  <button id="start">Start camera</button>
+  <button id="trigger" disabled>Analyze now</button>
+  <span id="gate"></span>
+  <span id="stage" class="muted"></span>
+</div>
+<div class="grid">
+  <div class="card stage">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
+  <div>
+    <div class="card"><div class="muted">Transcription <span id="pass"></span></div><pre id="code">-</pre></div>
+    <div class="card" style="margin-top:12px"><div class="muted">Findings</div><div id="findings">-</div></div>
+    <div class="card" style="margin-top:12px"><div class="muted">Log</div><div id="log"></div></div>
+  </div>
+</div>
+<script>
+const FPS = 2, MAX_SIDE = 1280;
+const $ = (id) => document.getElementById(id);
+const video = $("video"), overlay = $("overlay");
+const grab = document.createElement("canvas");
+let ws, sessionId, timer, lastState;
+
+function log(msg) {
+  const line = document.createElement("div");
+  line.textContent = new Date().toLocaleTimeString() + "  " + msg;
+  $("log").prepend(line);
+}
+
+fetch("/problems").then(r => r.json()).then(list => {
+  for (const p of list) $("problem").add(new Option(p.title, p.id));
+});
+
+$("start").onclick = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+  } catch (e) { log("camera error: " + e); return; }
+  const res = await fetch("/sessions", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ problemId: $("problem").value }) });
+  sessionId = (await res.json()).sessionId;
+  log("session " + sessionId);
+  ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/sessions/${sessionId}/ws`);
+  ws.onmessage = (m) => handle(JSON.parse(m.data));
+  ws.onclose = () => { log("socket closed"); clearInterval(timer); };
+  ws.onopen = () => { timer = setInterval(sendFrame, 1000 / FPS); };
+  $("start").disabled = true; $("trigger").disabled = false;
+};
+
+$("trigger").onclick = () => fetch(`/sessions/${sessionId}/trigger`, { method: "POST",
+  headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: "debug_button" }) });
+
+function sendFrame() {
+  if (!video.videoWidth || ws.readyState !== 1 || ws.bufferedAmount > 2e6) return;
+  const scale = Math.min(1, MAX_SIDE / Math.max(video.videoWidth, video.videoHeight));
+  grab.width = Math.round(video.videoWidth * scale);
+  grab.height = Math.round(video.videoHeight * scale);
+  grab.getContext("2d").drawImage(video, 0, 0, grab.width, grab.height);
+  ws.send(JSON.stringify({ type: "frame", capturedAt: new Date().toISOString(),
+                           imageData: grab.toDataURL("image/jpeg", 0.8) }));
+}
+
+function handle(ev) {
+  if (ev.type === "gate") {
+    const pill = (on, label) => `<span class="pill ${on ? "on" : "off"}">${label}</span>`;
+    $("gate").innerHTML = pill(ev.changed, "changed") + pill(ev.stable, "stable") + pill(ev.busy, "busy");
+  } else if (ev.type === "status") {
+    $("stage").textContent = ev.stage + (ev.detail ? ": " + ev.detail : "");
+    if (ev.stage !== "idle") log(ev.stage + (ev.detail ? ": " + ev.detail : ""));
+  } else if (ev.type === "boardState") {
+    lastState = ev; render(ev); log("pass " + ev.pass);
+  }
+}
+
+function render(s) {
+  $("pass").textContent = "(pass " + s.pass + ")";
+  $("code").textContent = s.regions.map(r =>
+    `# ${r.id} (${r.type})\n` + r.lines.map(l => String(l.n).padStart(2) + "  " + l.text).join("\n")).join("\n\n") || "-";
+  const f = $("findings"); f.innerHTML = "";
+  if (!s.findings.length) f.textContent = "none";
+  for (const x of s.findings) {
+    const d = document.createElement("div");
+    d.className = `finding t${x.severity} ${x.status}`;
+    d.textContent = `t${x.severity} L${x.line} [${x.status}] c=${x.confidence.toFixed(2)}  ${x.category}: ${x.message}`;
+    f.appendChild(d);
+  }
+  drawBoxes(s);
+}
+
+function drawBoxes(s) {
+  overlay.width = overlay.clientWidth; overlay.height = overlay.clientHeight;
+  const ctx = overlay.getContext("2d");
+  ctx.clearRect(0, 0, overlay.width, overlay.height);
+  ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--box");
+  ctx.fillStyle = ctx.strokeStyle; ctx.lineWidth = 2; ctx.font = "12px system-ui";
+  for (const r of s.regions) {
+    const { x, y, width, height } = r.bbox;
+    ctx.strokeRect(x * overlay.width, y * overlay.height, width * overlay.width, height * overlay.height);
+    ctx.fillText(r.id, x * overlay.width + 4, y * overlay.height + 14);
+  }
+}
+window.addEventListener("resize", () => lastState && drawBoxes(lastState));
+</script>
+</body>
+</html>

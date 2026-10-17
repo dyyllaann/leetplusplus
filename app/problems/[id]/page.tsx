@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { use, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { use, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import problems from "@/data/problems.json";
 
 type Problem = (typeof problems)[number];
@@ -21,6 +21,43 @@ function SessionView({ problem }: { problem: Problem }) {
   const [resizeTarget, setResizeTarget] = useState<ResizeTarget | null>(null);
   const [transcript, setTranscript] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSessionActive, setIsSessionActive] = useState(false);
+  const [hasSessionStarted, setHasSessionStarted] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const sessionStartedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isSessionActive) return;
+
+    const timer = window.setInterval(() => {
+      if (sessionStartedAt.current !== null) {
+        setElapsedSeconds(Math.floor((Date.now() - sessionStartedAt.current) / 1000));
+      }
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, [isSessionActive]);
+
+  function beginSession() {
+    sessionStartedAt.current = Date.now();
+    setElapsedSeconds(0);
+    setHasSessionStarted(true);
+    setIsSessionActive(true);
+  }
+
+  function endSession() {
+    if (sessionStartedAt.current !== null) {
+      setElapsedSeconds(Math.floor((Date.now() - sessionStartedAt.current) / 1000));
+    }
+    setIsSessionActive(false);
+  }
+
+  const hours = Math.floor(elapsedSeconds / 3600);
+  const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+  const seconds = elapsedSeconds % 60;
+  const formattedTime = hours > 0
+    ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+    : `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
   function toggleTheme() {
     setIsDarkMode((dark) => !dark);
@@ -72,9 +109,24 @@ function SessionView({ problem }: { problem: Problem }) {
           >
             {isDarkMode ? "Light mode" : "Dark mode"}
           </button>
-          <Link href="/problems" className="rounded border border-stone-300 px-2 py-1.5 text-xs font-semibold text-stone-700 hover:bg-white sm:px-3">
-            End session
-          </Link>
+          {hasSessionStarted && (
+            <output className="min-w-12 text-center font-mono text-xs tabular-nums text-stone-700" aria-label="Elapsed session time" aria-live="off">
+              {formattedTime}
+            </output>
+          )}
+          {isSessionActive ? (
+            <button type="button" onClick={endSession} className="rounded border border-stone-300 px-2 py-1.5 text-xs font-semibold text-stone-700 hover:bg-white sm:px-3">
+              End session
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={beginSession}
+              className="rounded bg-[#174d3b] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#103c2e]"
+            >
+              Begin Session
+            </button>
+          )}
         </div>
       </header>
       <div
@@ -181,41 +233,10 @@ function SessionView({ problem }: { problem: Problem }) {
 }
 
 export default function ProblemPage({ params }: { params: Promise<{ id: string }> }) {
-  const [isSessionActive, setIsSessionActive] = useState(false);
   const { id } = use(params);
   const problem = (problems as Problem[]).find((item) => item.id === id);
 
   if (!problem) notFound();
 
-  return (
-    <main className="min-h-screen bg-[#f7f8f5]">
-      <header className="border-b border-stone-200">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-lg font-bold tracking-tight text-[#17211d]">
-            leet<span className="text-emerald-700">++</span>
-          </Link>
-          <Link href="/problems" className="text-sm text-stone-600 hover:text-emerald-800">All problems</Link>
-        </div>
-      </header>
-      <article className="mx-auto max-w-6xl px-6 py-10">
-        {/* <Link href="/problems" className="text-sm text-stone-500 hover:text-emerald-800">&lt;- Problems</Link> */}
-        {/* <div className="mt-7 flex flex-wrap items-center gap-3"> */}
-          {/* <h1 className="text-3xl font-semibold tracking-tight text-[#17211d]">{problem.title}</h1> */}
-          {/* <span className="rounded bg-stone-200 px-2 py-1 text-xs font-medium text-stone-700">{problem.difficulty}</span> */}
-        {/* </div> */}
-        {/* <p className="mt-3 max-w-2xl text-base leading-7 text-stone-600">{problem.summary}</p> */}
-        {!isSessionActive ? (
-          <button
-            type="button"
-            onClick={() => setIsSessionActive(true)}
-            className="mt-7 rounded-md bg-[#174d3b] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#103c2e] focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:ring-offset-2"
-          >
-            Start session
-          </button>
-        ) : (
-          <SessionView problem={problem} />
-        )}
-      </article>
-    </main>
-  );
+  return <SessionView problem={problem} />;
 }
