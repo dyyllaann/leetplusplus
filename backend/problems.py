@@ -15,6 +15,10 @@ def _load() -> dict[str, dict[str, Any]]:
     return {p["id"]: p for p in json.loads(PROBLEMS_PATH.read_text())}
 
 
+def list_problems() -> list[dict[str, Any]]:
+    return list(_load().values())
+
+
 def get_problem(problem_id: str) -> dict[str, Any] | None:
     return _load().get(problem_id)
 

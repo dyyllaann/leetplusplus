@@ -16,13 +16,14 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from backend import config  # noqa: E402
 from backend.pipeline import run_pass  # noqa: E402
-from backend.problems import get_problem, problem_text  # noqa: E402
+from backend.problems import get_problem, list_problems, problem_text  # noqa: E402
 from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
 
@@ -66,6 +67,19 @@ def decode_data_url(data_url: str) -> tuple[bytes, str]:
     if not header.startswith("data:") or ";base64" not in header:
         raise ValueError("imageData must be a base64 data URL")
     return base64.b64decode(payload), header[5:].split(";")[0]
+
+
+STATIC = Path(__file__).resolve().parent / "static"
+
+
+@app.get("/debug/camera")
+def camera_debug_page() -> FileResponse:
+    return FileResponse(STATIC / "camera.html")
+
+
+@app.get("/problems")
+def problems() -> list[dict[str, str]]:
+    return [{"id": p["id"], "title": p.get("title", p["id"])} for p in list_problems()]
 
 
 @app.post("/sessions")

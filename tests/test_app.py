@@ -69,3 +69,9 @@ def test_bad_frame_reports_error(client):
         ws.send_json({"type": "frame", "imageData": "not a data url"})
         ev = ws.receive_json()
     assert ev["stage"] == "error"
+
+
+def test_problems_and_debug_page(client):
+    ids = [p["id"] for p in client.get("/problems").json()]
+    assert "two-sum" in ids
+    assert "getUserMedia" in client.get("/debug/camera").text

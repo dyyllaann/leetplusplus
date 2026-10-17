@@ -7,6 +7,12 @@ Owner of this file: backend. Frontend: please request changes rather than editin
 
 ## REST
 
+### `GET /problems`
+Response: `[{ "id": "two-sum", "title": "Two Sum" }, ...]`
+
+### `GET /debug/camera`
+Backend-served webcam test page (not part of the product UI).
+
 ### `POST /sessions`
 Request: `{ "problemId": "two-sum" }` (an `id` from `data/problems.json`)
 Response: `{ "sessionId": "a1b2c3d4" }`
