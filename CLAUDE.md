@@ -31,6 +31,15 @@ Deadline: Sun Oct 18, 10:30 AM. Prefer working, demoable code over completeness.
 7. Gemini Live voice agent converses and calls tools; backend executes tools.
 8. End of session: scorer produces rubric JSON; scores and schedule are stored.
 
+### Hackathon simplification (agreed Oct 17)
+For the demo, steps 2-4 run on the whole frame: no homography, no layout pass, no per-region
+gates. A whole-frame gate (changed vs last analyzed + still for ~1 s) triggers one pass:
+Perceptron transcribes the full frame (low reasoning) into region JSON, then the analyzer gets
+that JSON plus the frame image (the image catches Perceptron's occasional "corrections").
+Regions still come from the transcription output. Camera should be on a fixed tripod.
+Manual 4-click flattening is the first thing to add back if time allows.
+Backend <-> frontend contract: docs/api.md.
+
 ## Invariants (do not violate)
 - Transcription is LITERAL. Never correct the candidate's code, syntax, or comparisons.
 - The voice agent has no tool that writes code. Allowed tools only:

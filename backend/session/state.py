@@ -1,0 +1,121 @@
+"""In-memory session state: latest board transcription and tracked findings."""
+
+from __future__ import annotations
+
+import itertools
+import time
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Literal
+
+from backend.models.schemas import Finding, Transcription
+from backend.vision.gate import FrameGate
+
+FindingStatus = Literal["new", "queued", "released", "resolved"]
+HISTORY_LIMIT = 20
+LOG_ROOT = Path(__file__).resolve().parents[2] / "logs/sessions"
+
+
+@dataclass
+class TrackedFinding:
+    id: str
+    finding: Finding
+    status: FindingStatus = "new"
+    first_seen_pass: int = 0
+    last_seen_pass: int = 0
+
+
+def finding_key(f: Finding) -> tuple:
+    """Identity of an issue across passes. Category wording drifts between
+    model calls, so line-specific findings are keyed by location and tier."""
+    if f.line:
+        return (f.region_id, f.line, f.tier)
+    return (f.region_id, 0, f.tier, f.category.strip().lower())
+
+
+@dataclass
+class Session:
+    id: str
+    problem_id: str
+    problem_text: str
+    gate: FrameGate = field(default_factory=FrameGate)
+    pass_count: int = 0
+    transcription: Transcription | None = None
+    history: list[Transcription] = field(default_factory=list)
+    findings: list[TrackedFinding] = field(default_factory=list)
+    busy: bool = False
+    last_pass_at: float = 0.0
+    trigger_reason: str | None = None
+    updated_at: str | None = None
+    ended: bool = False
+    _ids: Any = field(default_factory=lambda: itertools.count(1))
+
+    @property
+    def log_dir(self) -> Path:
+        return LOG_ROOT / self.id
+
+    def due(self, now: float, interval: float) -> bool:
+        return self.trigger_reason is not None or now - self.last_pass_at >= interval
+
+    def apply_pass(self, transcription: Transcription, findings: list[Finding]) -> None:
+        """Record a completed pass. Findings that persist keep their id and status;
+        findings no longer reported become resolved."""
+        self.pass_count += 1
+        self.last_pass_at = time.monotonic()
+        self.trigger_reason = None
+        self.updated_at = datetime.now(timezone.utc).isoformat()
+        self.transcription = transcription
+        self.history = (self.history + [transcription])[-HISTORY_LIMIT:]
+
+        open_by_key = {finding_key(t.finding): t for t in self.findings if t.status != "resolved"}
+        seen = set()
+        for f in findings:
+            key = finding_key(f)
+            if key in seen:
+                continue
+            seen.add(key)
+            if key in open_by_key:
+                tracked = open_by_key[key]
+                tracked.finding = f
+                tracked.last_seen_pass = self.pass_count
+            else:
+                self.findings.append(TrackedFinding(
+                    id=f"f{next(self._ids)}", finding=f,
+                    first_seen_pass=self.pass_count, last_seen_pass=self.pass_count))
+        for key, tracked in open_by_key.items():
+            if key not in seen:
+                tracked.status = "resolved"
+
+    def board_state(self) -> dict[str, Any]:
+        regions = []
+        for r in (self.transcription.regions if self.transcription else []):
+            b = r.bbox
+            regions.append({
+                "id": r.id, "type": r.type,
+                "bbox": {"x": b.x1 / 1000, "y": b.y1 / 1000,
+                         "width": (b.x2 - b.x1) / 1000, "height": (b.y2 - b.y1) / 1000},
+                "lines": [{"n": ln.n, "text": ln.text, "lowConfidenceChars": ln.low_confidence_chars}
+                          for ln in r.lines],
+            })
+        findings = [{
+            "id": t.id, "regionId": t.finding.region_id, "line": t.finding.line,
+            "severity": t.finding.tier, "category": t.finding.category,
+            "confidence": t.finding.confidence, "message": t.finding.message, "status": t.status,
+        } for t in self.findings]
+        return {"type": "boardState", "pass": self.pass_count, "updatedAt": self.updated_at,
+                "regions": regions, "findings": findings}
+
+
+class SessionStore:
+    def __init__(self) -> None:
+        self._sessions: dict[str, Session] = {}
+
+    def create(self, problem_id: str, problem_text: str) -> Session:
+        session = Session(id=uuid.uuid4().hex[:8], problem_id=problem_id, problem_text=problem_text)
+        self._sessions[session.id] = session
+        return session
+
+    def get(self, session_id: str) -> Session | None:
+        return self._sessions.get(session_id)

@@ -23,18 +23,9 @@ from dotenv import load_dotenv  # noqa: E402
 from backend.evaluation.scoring import (  # noqa: E402
     FindingsScore, TranscriptionScore, code_lines, score_findings, score_transcription)
 from backend.models.analyzer import ANALYZERS, get_analyzer  # noqa: E402
+from backend.models.call_log import save_call  # noqa: E402
 from backend.models.schemas import ModelCall, Transcription  # noqa: E402
 from backend.models.transcriber import get_transcriber  # noqa: E402
-
-
-def save_call(log_dir: Path, name: str, call: ModelCall) -> None:
-    record = {
-        "provider": call.provider, "model": call.model, "latency_s": call.latency_s,
-        "input_tokens": call.input_tokens, "output_tokens": call.output_tokens,
-        "error": call.error, "request": call.request, "response": call.response,
-        "parsed": call.parsed.model_dump(mode="json") if call.parsed else None,
-    }
-    (log_dir / f"{name}.json").write_text(json.dumps(record, indent=2, default=str))
 
 
 def expected_transcription(expected: dict) -> Transcription:
