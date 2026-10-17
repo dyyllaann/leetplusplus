@@ -1,0 +1,6 @@
+anthropic>=1.15
+google-genai>=2.31
+httpx>=0.28
+pydantic>=2.14
+python-dotenv>=1.2
+pytest>=9

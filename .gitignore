@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+logs/**
+!logs/phase0/
+!logs/phase0/.gitkeep
+node_modules
+.next/
+*.tsbuildinfo

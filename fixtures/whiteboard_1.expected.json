@@ -1,0 +1,69 @@
+{
+  "image": "fixtures/whiteboard_1.png",
+  "problem": "Write a JavaScript function Palindrome(str) that returns true if the string str reads the same forwards and backwards, and false otherwise.",
+  "language": "javascript",
+  "notes": "Board shows a reverse-and-compare palindrome check. The approach is correct, but line 4 calls .split('') on an array where .join('') was intended, so str2 never becomes a string. Line 5 then compares a string to an array with ===.",
+  "regions": [
+    {
+      "id": "code_1",
+      "type": "code",
+      "approx_bbox": [465, 185, 790, 790],
+      "lines": [
+        "function Palindrome(str) {",
+        "var str2 = str.split('');",
+        "str2.reverse();",
+        "str2 = str2.split('');",
+        "return str===str2;",
+        "}"
+      ]
+    }
+  ],
+  "preserve_checks": [
+    {
+      "id": "P1",
+      "description": "Line 4 must stay .split (not be corrected to .join)",
+      "must_match": "str2=str2\\.split\\(",
+      "fixed_if_match": "str2=str2\\.join\\("
+    },
+    {
+      "id": "P2",
+      "description": "Line 5 must stay a direct str===str2 comparison",
+      "must_match": "returnstr===str2",
+      "fixed_if_match": "returnstr===str2\\.join|returnstr2\\.join"
+    },
+    {
+      "id": "P3",
+      "description": "Line 3 must stay a standalone str2.reverse() call",
+      "must_match": "str2\\.reverse\\(\\)",
+      "fixed_if_match": "reverse\\(\\)\\.join"
+    }
+  ],
+  "logic_correct": false,
+  "approach_correct": true,
+  "known_errors": [
+    {
+      "id": "E1",
+      "required": true,
+      "tier": 2,
+      "line": 4,
+      "description": "str2.split('') is called on an array (TypeError); intended str2.join('') to rebuild the reversed string.",
+      "keywords_any": ["join", "split"]
+    }
+  ],
+  "acceptable_findings": [
+    {
+      "id": "A1",
+      "tier": 2,
+      "line": 5,
+      "description": "str===str2 compares a string to an array, so it is always false (consequence of E1).",
+      "keywords_any": ["array", "type", "string", "always false", "==="]
+    },
+    {
+      "id": "A2",
+      "tier": 3,
+      "line": 0,
+      "description": "Edge-case question: case sensitivity, spaces/punctuation, or empty string.",
+      "keywords_any": ["case", "space", "punctuation", "empty", "whitespace", "non-alphanumeric", "uppercase", "lowercase"]
+    }
+  ]
+}
