@@ -12,8 +12,29 @@ type Problem = (typeof problems)[number];
 
 type ResizeTarget = "columns" | "rows";
 
+type PreviousAttempt = {
+  id: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  boardPass: number;
+  findingCount: number;
+  aiReview?: { summary: string; reviewedAt: string } | null;
+};
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function formatDuration(totalSeconds: number) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return hours > 0
+    ? `${hours}h ${minutes}m ${seconds}s`
+    : minutes > 0
+      ? `${minutes}m ${seconds}s`
+      : `${seconds}s`;
 }
 
 function SessionView({ problem }: { problem: Problem }) {
@@ -28,7 +49,39 @@ function SessionView({ problem }: { problem: Problem }) {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [hasSessionStarted, setHasSessionStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [promptTab, setPromptTab] = useState<"prompt" | "attempts">("prompt");
+  const [attempts, setAttempts] = useState<PreviousAttempt[]>([]);
+  const [attemptsLoaded, setAttemptsLoaded] = useState(false);
   const sessionStartedAt = useRef<number | null>(null);
+  const attemptsStorageKey = `leetplusplus:attempts:${problem.id}`;
+
+  useEffect(() => {
+    try {
+      const savedAttempts: unknown = JSON.parse(window.localStorage.getItem(attemptsStorageKey) ?? "[]");
+      if (Array.isArray(savedAttempts)) {
+        setAttempts(savedAttempts.filter((attempt): attempt is PreviousAttempt =>
+          typeof attempt?.id === "string" &&
+          typeof attempt?.startedAt === "string" &&
+          typeof attempt?.endedAt === "string" &&
+          typeof attempt?.durationSeconds === "number" &&
+          typeof attempt?.boardPass === "number" &&
+          typeof attempt?.findingCount === "number"
+        ));
+      }
+    } catch {
+      setAttempts([]);
+    }
+    setAttemptsLoaded(true);
+  }, [attemptsStorageKey]);
+
+  useEffect(() => {
+    if (!attemptsLoaded) return;
+    try {
+      window.localStorage.setItem(attemptsStorageKey, JSON.stringify(attempts));
+    } catch {
+      // Keep the current page usable when browser storage is unavailable.
+    }
+  }, [attempts, attemptsLoaded, attemptsStorageKey]);
 
   useEffect(() => {
     if (!isSessionActive) return;
@@ -56,12 +109,25 @@ function SessionView({ problem }: { problem: Problem }) {
   }
 
   async function endSession() {
-    if (sessionStartedAt.current !== null) {
-      setElapsedSeconds(Math.floor((Date.now() - sessionStartedAt.current) / 1000));
+    const endedAt = Date.now();
+    const startedAt = sessionStartedAt.current;
+    if (startedAt !== null) {
+      const durationSeconds = Math.floor((endedAt - startedAt) / 1000);
+      setElapsedSeconds(durationSeconds);
+      setAttempts((previousAttempts) => [{
+        id: `${endedAt}-${Math.random().toString(36).slice(2, 8)}`,
+        startedAt: new Date(startedAt).toISOString(),
+        endedAt: new Date(endedAt).toISOString(),
+        durationSeconds,
+        boardPass: boardSession.board?.pass ?? 0,
+        findingCount: boardSession.board?.findings.length ?? 0,
+        aiReview: null,
+      }, ...previousAttempts]);
+      sessionStartedAt.current = null;
     }
     setIsSessionActive(false);
-    await boardSession.stop();
     camera.stop();
+    await boardSession.stop();
   }
 
   const hours = Math.floor(elapsedSeconds / 3600);
@@ -151,34 +217,87 @@ function SessionView({ problem }: { problem: Problem }) {
       >
         <article className="workspace-prompt min-h-0 overflow-y-auto border-r border-stone-200 bg-[#fbfcfa] px-3 py-4 sm:px-4">
           <div className="w-full">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded bg-stone-200 px-2 py-1 text-xs font-semibold text-stone-700">{problem.difficulty}</span>
-              {problem.patterns.map((pattern) => (
-                <span key={pattern} className="border border-stone-300 px-2 py-1 text-xs text-stone-600">{pattern}</span>
-              ))}
+            <div className="flex items-center gap-1 border-b border-stone-200" role="group" aria-label="Prompt views">
+              <button
+                type="button"
+                aria-pressed={promptTab === "prompt"}
+                onClick={() => setPromptTab("prompt")}
+                className={`border-b-2 px-3 py-2 text-sm font-medium ${promptTab === "prompt" ? "border-emerald-700 text-emerald-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
+              >
+                Prompt
+              </button>
+              <button
+                type="button"
+                aria-pressed={promptTab === "attempts"}
+                onClick={() => setPromptTab("attempts")}
+                className={`border-b-2 px-3 py-2 text-sm font-medium ${promptTab === "attempts" ? "border-emerald-700 text-emerald-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
+              >
+                Previous attempts <span className="ml-1 text-xs text-stone-400">{attempts.length}</span>
+              </button>
             </div>
-            <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#17211d] sm:text-3xl">{problem.title}</h1>
-            <p className="mt-5 max-w-3xl text-base leading-7 text-stone-700">{problem.prompt.description}</p>
+            {promptTab === "prompt" ? (
+              <>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className="rounded bg-stone-200 px-2 py-1 text-xs font-semibold text-stone-700">{problem.difficulty}</span>
+                  {problem.patterns.map((pattern) => (
+                    <span key={pattern} className="border border-stone-300 px-2 py-1 text-xs text-stone-600">{pattern}</span>
+                  ))}
+                </div>
+                <h1 className="mt-4 text-2xl font-semibold tracking-tight text-[#17211d] sm:text-3xl">{problem.title}</h1>
+                <p className="mt-5 max-w-3xl text-base leading-7 text-stone-700">{problem.prompt.description}</p>
 
-            <section className="mt-8" aria-labelledby="examples-heading">
-              <h2 id="examples-heading" className="text-sm font-semibold text-[#17211d]">Examples</h2>
-              <div className="mt-3 space-y-3">
-                {problem.prompt.examples.map((example) => (
-                  <div key={example.input} className="border-l-2 border-emerald-700 bg-white px-4 py-3">
-                    <p className="font-mono text-sm leading-6 text-stone-800"><span className="font-sans font-semibold">Input:</span> {example.input}</p>
-                    <p className="font-mono text-sm leading-6 text-stone-800"><span className="font-sans font-semibold">Output:</span> {example.output}</p>
-                    <p className="mt-1 text-sm leading-6 text-stone-600">{example.explanation}</p>
+                <section className="mt-8" aria-labelledby="examples-heading">
+                  <h2 id="examples-heading" className="text-sm font-semibold text-[#17211d]">Examples</h2>
+                  <div className="mt-3 space-y-3">
+                    {problem.prompt.examples.map((example) => (
+                      <div key={example.input} className="border-l-2 border-emerald-700 bg-white px-4 py-3">
+                        <p className="font-mono text-sm leading-6 text-stone-800"><span className="font-sans font-semibold">Input:</span> {example.input}</p>
+                        <p className="font-mono text-sm leading-6 text-stone-800"><span className="font-sans font-semibold">Output:</span> {example.output}</p>
+                        <p className="mt-1 text-sm leading-6 text-stone-600">{example.explanation}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </section>
+                </section>
 
-            <section className="mt-8 pb-6" aria-labelledby="constraints-heading">
-              <h2 id="constraints-heading" className="text-sm font-semibold text-[#17211d]">Constraints &amp; goals</h2>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-700">
-                {problem.prompt.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}
-              </ul>
-            </section>
+                <section className="mt-8 pb-6" aria-labelledby="constraints-heading">
+                  <h2 id="constraints-heading" className="text-sm font-semibold text-[#17211d]">Constraints &amp; goals</h2>
+                  <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-stone-700">
+                    {problem.prompt.constraints.map((constraint) => <li key={constraint}>{constraint}</li>)}
+                  </ul>
+                </section>
+              </>
+            ) : (
+              <section className="pt-5" aria-label="Previous attempts">
+                {attempts.length === 0 ? (
+                  <p className="text-sm text-stone-500">No previous attempts yet.</p>
+                ) : (
+                  <ol className="divide-y divide-stone-200">
+                    {attempts.map((attempt) => (
+                      <li key={attempt.id} className="py-4 first:pt-0">
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <time dateTime={attempt.endedAt} className="text-sm font-semibold text-[#17211d]">
+                            {new Date(attempt.endedAt).toLocaleString()}
+                          </time>
+                          <span className="text-xs text-stone-500">{formatDuration(attempt.durationSeconds)}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-stone-500">
+                          {attempt.boardPass} board {attempt.boardPass === 1 ? "pass" : "passes"} · {attempt.findingCount} {attempt.findingCount === 1 ? "finding" : "findings"}
+                        </p>
+                        {attempt.aiReview && (
+                          <section className="mt-3 border-l-2 border-emerald-700 pl-3" aria-label="AI review">
+                            <h2 className="text-xs font-semibold text-stone-700">AI review</h2>
+                            <p className="mt-1 text-sm leading-6 text-stone-600">{attempt.aiReview.summary}</p>
+                            <time dateTime={attempt.aiReview.reviewedAt} className="mt-1 block text-xs text-stone-400">
+                              {new Date(attempt.aiReview.reviewedAt).toLocaleString()}
+                            </time>
+                          </section>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+              </section>
+            )}
           </div>
         </article>
 
@@ -206,6 +325,7 @@ function SessionView({ problem }: { problem: Problem }) {
             gate={boardSession.gate}
             status={boardSession.status}
             error={camera.error ?? boardSession.connectionError}
+            sessionEnded={hasSessionStarted && !isSessionActive}
           />
 
           <div
@@ -221,7 +341,7 @@ function SessionView({ problem }: { problem: Problem }) {
             onKeyDown={(event) => resizeByKeyboard("rows", event)}
           />
 
-          <BoardPanel board={boardSession.board} />
+          <BoardPanel board={boardSession.board} problemId={problem.id} />
         </div>
       </div>
     </main>
