@@ -178,6 +178,7 @@ def test_sync_times_out_while_change_is_pending(client):
 def test_voice_endpoints(client):
     sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
     cfg = client.get(f"/sessions/{sid}/voice-config").json()
+    assert cfg["voiceName"] == "Zephyr"
     assert "Two Sum" in cfg["systemPrompt"] and {t["name"] for t in cfg["tools"]} == {
         "ask_question", "point_to_region", "flag_error_type", "give_hint"}
     assert client.post(f"/sessions/{sid}/interjection").json() == {"release": None}

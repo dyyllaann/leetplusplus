@@ -23,3 +23,6 @@ FULL_PASS_EVERY = int(os.getenv("FULL_PASS_EVERY", "5"))  # resync after this ma
 LINE_PAD_FRACTION = float(os.getenv("LINE_PAD_FRACTION", "0.35"))  # of line height, each side
 # Changed pixels outside every known line (a new line or region) above this share -> full pass.
 UNLOCALIZED_MAX_FRACTION = float(os.getenv("UNLOCALIZED_MAX_FRACTION", "0.15"))
+
+# Gemini Live prebuilt voice (e.g. Zephyr, Puck). Sent to the client in /voice-config.
+VOICE_NAME = os.getenv("VOICE_NAME", "Zephyr")

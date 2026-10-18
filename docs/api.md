@@ -38,8 +38,9 @@ candidate turn before generating a reply**, and say a short holding line if `fre
 ## Voice agent (backend/policy.py, backend/voice_tools.py)
 
 ### `GET /sessions/{sessionId}/voice-config`
-Response: `{ "systemPrompt": "...", "tools": [ ...function declarations... ] }`
-Register both with the Gemini Live session. The prompt includes the problem text.
+Response: `{ "systemPrompt": "...", "tools": [ ...function declarations... ], "voiceName": "Zephyr" }`
+Register all three with the Gemini Live session. The prompt includes the problem text.
+`voiceName` is a Gemini prebuilt voice, set with `VOICE_NAME` in `.env` (default Zephyr).
 
 ### `POST /sessions/{sessionId}/tools`
 Request: `{ "name": "point_to_region", "args": { "region_id": "code_1", "line": 4 } }`

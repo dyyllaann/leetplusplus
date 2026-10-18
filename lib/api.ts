@@ -47,7 +47,7 @@ export function syncBoard(sessionId: string, timeoutSeconds = 2.5): Promise<Sync
 
 type FunctionDeclaration = { name: string; description: string; parameters: Record<string, unknown> };
 
-export async function getVoiceConfig(sessionId: string): Promise<{ systemPrompt: string; tools: FunctionDeclaration[] }> {
+export async function getVoiceConfig(sessionId: string): Promise<{ systemPrompt: string; tools: FunctionDeclaration[]; voiceName: string }> {
   const res = await fetch(`${BACKEND_URL}/sessions/${sessionId}/voice-config`);
   if (!res.ok) throw new Error(`voice-config failed: ${res.status}`);
   return res.json();

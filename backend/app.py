@@ -143,7 +143,8 @@ def voice_config(session_id: str) -> dict[str, Any]:
     """System prompt and tool declarations for the voice session."""
     session = require(session_id)
     return {"systemPrompt": INTERVIEWER_PROMPT.replace("{problem}", session.problem_text),
-            "tools": voice_tools.TOOL_DECLARATIONS}
+            "tools": voice_tools.TOOL_DECLARATIONS,
+            "voiceName": config.VOICE_NAME}
 
 
 @app.post("/sessions/{session_id}/tools")
