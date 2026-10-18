@@ -20,5 +20,6 @@ VOICE_MODEL = os.getenv("VOICE_MODEL", "gemini-3.8-live")
 VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
 # Prebuilt voice (list: ai.google.dev/gemini-api/docs/speech-generation#voices). Empty = model default.
 VOICE_NAME = os.getenv("VOICE_NAME", "Achird")
-# How long the candidate must be silent before their turn ends. Thinking aloud has long pauses.
-VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "3000"))
+# Silence that ends a candidate turn for Gemini. Kept short so questions get quick answers;
+# replies to thinking-aloud turns are muted by the bridge (policy.addressed_to_interviewer).
+VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "800"))

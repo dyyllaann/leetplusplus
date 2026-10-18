@@ -76,3 +76,15 @@ def test_coach_note_modes():
     assert "name its category" in coach_note(Release(tf, "correction"))
     assert "line=1" in coach_note(Release(tf, "correction"))
     assert "SECRET" not in coach_note(Release(tf, "correction"))
+
+
+def test_bridge_mutes_replies_to_thinking_aloud():
+    from backend.voice.bridge import VoiceBridge
+    b = VoiceBridge(session_with_finding(), ws=None, notify_board=None)
+    b._buffers["candidate"] = "so I'll keep a map from value to index"
+    assert not b.should_voice_turn()
+    b._buffers["candidate"] = "Can I assume the input is sorted?"
+    assert b.should_voice_turn()
+    b._buffers["candidate"] = "so I'll keep a map"
+    b.awaiting_response = True          # coach notes and the greeting are always voiced
+    assert b.should_voice_turn()

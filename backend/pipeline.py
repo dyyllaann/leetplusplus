@@ -12,6 +12,7 @@ from backend.models.call_log import save_call
 from backend.models.transcriber import Transcriber, get_transcriber
 from backend.models.schemas import BBox, Correction, Line, Region, RegionRewrite, Transcription
 from backend.session.state import Session
+from backend.vision.occlusion import only_lost_text
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -104,6 +105,11 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         return False
 
     transcription = normalize_region_ids(t_call.parsed)
+    if only_lost_text(session.raw_transcription, transcription):
+        # Something is blocking the board: keep the last good reading until an actual change.
+        session.mark_unchanged_pass()
+        await emit({"type": "status", "stage": "idle", "detail": "view blocked; keeping last transcription"})
+        return True
     if session.raw_transcription is not None and board_text(transcription) == board_text(session.raw_transcription):
         # Same text as last pass: keep current findings, skip the analyzer call.
         session.mark_unchanged_pass()

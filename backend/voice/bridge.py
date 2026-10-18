@@ -30,7 +30,7 @@ PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts/interviewer.md"
 TICK_SECONDS = 0.5
 CHECK_WINDOW_SECONDS = 30.0  # a check request waits this long for a fresh analysis
 TIER_NAMES = {1: "approach", 2: "logic error", 3: "edge case", 4: "syntax"}
-TRIGGER_AFTER_SILENCE_SECONDS = config.VOICE_SILENCE_MS / 1000
+TRIGGER_AFTER_SILENCE_SECONDS = 2.0  # pause before asking the vision loop for a fresh pass
 
 
 def board_note(session: Session) -> str:
@@ -81,6 +81,7 @@ class VoiceBridge:
         self.check_requested_at: float | None = None
         self.interviewer_speaking = False
         self.awaiting_response = False  # a turn_complete=True note was sent; reply not finished yet
+        self.turn_voiced: bool | None = None  # decided at the first audio of each model turn
         self._buffers = {"candidate": "", "interviewer": ""}
 
     async def _send_json(self, event: dict[str, Any]) -> None:
@@ -150,12 +151,16 @@ class VoiceBridge:
                     continue
                 if sc.interrupted:
                     self.interviewer_speaking = False
+                    self.turn_voiced = None
                     await self._send_json({"type": "interrupted"})
                 if sc.model_turn:
                     for part in sc.model_turn.parts or []:
                         if part.inline_data and part.inline_data.data:
-                            self.interviewer_speaking = True
-                            await self.ws.send_bytes(part.inline_data.data)
+                            if self.turn_voiced is None:
+                                self.turn_voiced = self.should_voice_turn()
+                            if self.turn_voiced:
+                                self.interviewer_speaking = True
+                                await self.ws.send_bytes(part.inline_data.data)
                 if sc.input_transcription and sc.input_transcription.text:
                     self.last_candidate_speech_at = time.monotonic()
                     self._buffers["candidate"] += sc.input_transcription.text
@@ -164,13 +169,25 @@ class VoiceBridge:
                 if sc.turn_complete:
                     self.interviewer_speaking = False
                     self.awaiting_response = False
-                    await self._flush_transcripts()
+                    await self._flush_transcripts(interviewer_voiced=self.turn_voiced is not False)
+                    self.turn_voiced = None
 
-    async def _flush_transcripts(self) -> None:
+    def should_voice_turn(self) -> bool:
+        """Play a model reply only if the backend asked for it or the candidate addressed
+        the interviewer. Replies to thinking aloud ("got it", "okay") are muted."""
+        if self.awaiting_response:
+            return True
+        said = self._buffers["candidate"].strip()
+        return not said or policy.addressed_to_interviewer(said)
+
+    async def _flush_transcripts(self, interviewer_voiced: bool = True) -> None:
         for role in ("candidate", "interviewer"):
             text = self._buffers[role].strip()
             self._buffers[role] = ""
             if not text:
+                continue
+            if role == "interviewer" and not interviewer_voiced:
+                logger.info(f"muted reply to thinking aloud: {text!r}")
                 continue
             if role == "candidate":
                 if policy.candidate_signals_done(text):

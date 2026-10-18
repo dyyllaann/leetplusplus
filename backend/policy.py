@@ -21,7 +21,7 @@ from backend.session.state import TrackedFinding
 
 COOLDOWN_SECONDS = 20.0
 CONFIDENCE_THRESHOLD = 0.6
-SPEAKING_GRACE_SECONDS = 3.5  # longer than the end-of-turn silence (config.VOICE_SILENCE_MS)
+SPEAKING_GRACE_SECONDS = 3.5  # don't interrupt within this long of the candidate's last words
 
 DONE_PATTERN = re.compile(
     r"\b(i'?m done|i am done|that'?s it|finished|i think (this|that) works|let'?s (trace|test)|"
@@ -51,6 +51,20 @@ CHECK_PATTERN = re.compile(
     r"am i on (the right )?track|any (issues|problems|bugs))\b",
     re.IGNORECASE,
 )
+
+
+ADDRESSED_PATTERN = re.compile(
+    r"(\?|^\s*(what|how|can|could|should|is|are|does|do|will|would|why|when|where|which|may)\b|"
+    r"\b(hint|ready|i'?m done|finished|that'?s it|question|stuck|repeat|sorry|"
+    r"no questions|go ahead|let'?s (start|begin)|yes|yeah|nope|no)\b)",
+    re.IGNORECASE,
+)
+
+
+def addressed_to_interviewer(utterance: str) -> bool:
+    """True if the candidate's turn calls for a spoken reply (a question, an answer to the
+    interviewer, or a status like "ready"/"done"); False for thinking aloud."""
+    return bool(ADDRESSED_PATTERN.search(utterance))
 
 
 def candidate_asks_for_check(utterance: str) -> bool:

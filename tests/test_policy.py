@@ -58,3 +58,12 @@ def test_check_request_detection_and_cooldown_bypass():
     assert not candidate_asks_for_check("I'll loop over the values")
     assert decide([tf(2)], state(last_release_at=95.0)) is None
     assert decide([tf(2)], state(last_release_at=95.0, candidate_asked_for_check=True)) is not None
+
+
+def test_addressed_vs_thinking_aloud():
+    from backend.policy import addressed_to_interviewer
+    assert addressed_to_interviewer("Can the list have negative numbers?")
+    assert addressed_to_interviewer("Yeah I'm ready")
+    assert addressed_to_interviewer("could I get a hint")
+    assert not addressed_to_interviewer("so I'll keep a map from value to index and then check the complement")
+    assert not addressed_to_interviewer("okay so here we loop over the values")
