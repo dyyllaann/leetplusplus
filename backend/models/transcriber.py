@@ -35,6 +35,8 @@ class PerceptronTranscriber(Transcriber):
             schema_name="board_transcription",
             model=self.model,
             reasoning_effort=self.reasoning_effort,
+            # A full board is ~500 tokens; a low cap stops runaway repetition fast.
+            max_completion_tokens=2048,
         )
 
 

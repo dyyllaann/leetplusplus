@@ -30,13 +30,15 @@ def models() -> tuple[Transcriber, Analyzer]:
 
 def normalize_region_ids(t: Transcription) -> Transcription:
     """Model-chosen ids drift between passes ("code", "code_block", ...). Renumber
-    by type in reading order so findings keep a stable region_id."""
+    by type in reading order so findings keep a stable region_id, and renumber lines."""
     regions = sorted(t.regions, key=lambda r: (r.bbox.y1, r.bbox.x1))
     counts: dict[str, int] = {}
     renamed = []
     for r in regions:
         counts[r.type] = counts.get(r.type, 0) + 1
-        renamed.append(r.model_copy(update={"id": f"{r.type}_{counts[r.type]}"}))
+        # Line numbers are also reassigned: the model sometimes repeats or skips them.
+        lines = [ln.model_copy(update={"n": i}) for i, ln in enumerate(r.lines, 1)]
+        renamed.append(r.model_copy(update={"id": f"{r.type}_{counts[r.type]}", "lines": lines}))
     return Transcription(regions=renamed)
 
 

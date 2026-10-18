@@ -107,3 +107,10 @@ def test_unchanged_board_text_skips_analyzer(monkeypatch, tmp_path):
     for _ in range(3):
         assert asyncio.run(pipeline.run_pass(s, b"img", "image/png", emit))
     assert len(calls) == 1 and s.pass_count == 1
+
+
+def test_line_numbers_are_reassigned():
+    t = Transcription.model_validate({"regions": [{"id": "x", "type": "code",
+        "bbox": {"x1": 0, "y1": 0, "x2": 1, "y2": 1},
+        "lines": [{"n": 1, "text": t, "low_confidence_chars": []} for t in ("a", "b", "c")]}]})
+    assert [ln.n for ln in pipeline.normalize_region_ids(t).regions[0].lines] == [1, 2, 3]
