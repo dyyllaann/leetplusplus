@@ -5,11 +5,15 @@ You are a literal transcription engine for a whiteboard coding interview.
 
 Find every distinct written area on the board and return it as a region:
 - code: program source
+- heading: problem titles or labels
 - diagram: boxes, arrows, trees, arrays drawn as cells
 - examples: sample inputs and outputs
 - trace: variable values written while stepping through the code
 
 Rules:
+- All consecutive lines in one source-code block belong to ONE code region. Put each
+  written code line in that region's lines array; never make one code region per line.
+- A problem title or section label is a heading, not code.
 - Copy characters EXACTLY as written. Do not fix syntax, method names, operators,
   comparisons, spelling, indentation, or missing punctuation. Bugs must survive.
 - If the writer wrote a wrong method name, keep it. Never substitute what they "meant".
@@ -94,3 +98,29 @@ def analyze_user(problem: str, transcription_json: str) -> str:
         f"Board transcription (JSON):\n{transcription_json}\n\n"
         "Return your findings in the JSON schema."
     )
+
+
+CODE_REVIEW_SYSTEM = """\
+You review a candidate's submitted solution to a coding interview problem.
+The submitted code is typed text and is the source of truth; do not infer missing code.
+
+Assess whether the approach solves the problem, whether the implementation is correct,
+and whether important edge cases or language errors remain. Report only concrete issues.
+Use tier 1 for an unsuitable approach, 2 for logic or runtime errors, 3 for edge cases,
+and 4 for syntax or language-level errors. Line numbers are 1-based; use 0 when an issue
+is not tied to one line. Confidence is your probability that an issue is real.
+
+Return a concise summary and findings. If the solution appears correct, return no findings.
+Do not provide replacement code or a complete solution. Describe each issue and its impact
+briefly; do not invent requirements absent from the problem statement.
+"""
+
+
+def code_review_user(problem: str, language: str, code: str) -> str:
+  numbered_code = "\n".join(f"{number:4} | {line}" for number, line in enumerate(code.splitlines(), 1))
+  return (
+    f"Problem:\n{problem}\n\n"
+    f"Language: {language or 'unspecified'}\n\n"
+    f"Submitted code:\n{numbered_code}\n\n"
+    "Review this submission and return the result in the JSON schema."
+  )

@@ -40,6 +40,34 @@ export function DiffView({ submission }: { submission: Submission }) {
   const edits = counts.changed + counts.added + counts.removed;
   return (
     <div className="flex min-h-0 flex-col">
+      {submission.review ? (
+        <section className="shrink-0 border-b border-stone-200 bg-white px-3 py-3" aria-label="Code review">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+            <h3 className="text-xs font-semibold text-stone-800">Code review</h3>
+            <span className="text-[11px] text-stone-400">
+              {submission.reviewModel ?? submission.reviewProvider}
+              {submission.reviewLatencyS !== null && ` · ${submission.reviewLatencyS.toFixed(1)}s`}
+            </span>
+          </div>
+          <p className="mt-1 text-sm leading-5 text-stone-700">{submission.review.summary}</p>
+          {submission.review.findings.length > 0 ? (
+            <ul className="mt-2 space-y-2">
+              {submission.review.findings.map((finding, index) => (
+                <li key={`${finding.line}-${finding.category}-${index}`} className="border-l-2 border-amber-500 pl-2 text-xs leading-5 text-stone-700">
+                  <span className="font-semibold">{finding.line > 0 ? `Line ${finding.line}` : "Overall"} · Tier {finding.tier} · {finding.category}:</span>{" "}
+                  {finding.message}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-xs font-medium text-emerald-800">No issues found.</p>
+          )}
+        </section>
+      ) : submission.reviewError ? (
+        <p className="shrink-0 border-b border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Code was submitted, but review failed: {submission.reviewError}
+        </p>
+      ) : null}
       <p className="border-b border-stone-200 px-3 py-2 text-xs text-stone-500">
         {edits === 0
           ? "Typed code matches the whiteboard."

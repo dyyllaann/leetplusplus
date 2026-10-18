@@ -23,6 +23,7 @@ from pydantic import BaseModel
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from backend import config  # noqa: E402
+from backend import pipeline  # noqa: E402
 from backend.pipeline import run_pass  # noqa: E402
 from backend.problems import get_problem, list_problems, problem_text  # noqa: E402
 from backend.session.state import Session, SessionStore  # noqa: E402
@@ -30,6 +31,7 @@ from backend.vision.gate import thumbnail  # noqa: E402
 from backend.voice.bridge import VoiceBridge  # noqa: E402
 from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
 from backend import policy, voice_tools  # noqa: E402
+from backend.models.call_log import save_call  # noqa: E402
 from backend.submission import Submission, line_diff, submit as make_submission  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
@@ -187,9 +189,7 @@ def add_transcript(session_id: str, body: TranscriptTurn) -> dict[str, bool]:
 
 @app.post("/sessions/{session_id}/submit")
 async def submit_code(session_id: str, body: SubmitCode) -> dict[str, Any]:
-    """Submit the typed code, which takes priority over the board. The first submit takes
-    a board snapshot; later submits replace only the typed code and re-diff, so the typed
-    code stays editable."""
+    """Submit and review typed code. The board snapshot stays fixed across resubmits."""
     session = require(session_id)
     if session.submission is None:
         sub = make_submission(session.transcription, body.code, body.language)
@@ -200,6 +200,22 @@ async def submit_code(session_id: str, body: SubmitCode) -> dict[str, Any]:
         sub.diff = line_diff(prev.board_snapshot, sub.typed_code)
     session.submission = sub
     session.phase = "done"
+
+    try:
+        analyzer = pipeline.models()[1]
+        review_call = await asyncio.to_thread(
+            analyzer.review_code, session.problem_text, body.code, body.language or "unspecified")
+        save_call(session.log_dir, f"submission_review_{int(time.time() * 1000)}", review_call)
+        sub.review_provider = review_call.provider
+        sub.review_model = review_call.model
+        sub.review_latency_s = review_call.latency_s
+        if review_call.parsed is not None:
+            sub.review = review_call.parsed
+        else:
+            sub.review_error = review_call.error or "The review model returned no result."
+    except Exception as exc:
+        sub.review_error = f"{type(exc).__name__}: {exc}"
+
     event = sub.as_json()
     await broadcast(session_id, event)
     return event

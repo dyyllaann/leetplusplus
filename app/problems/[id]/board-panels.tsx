@@ -36,6 +36,8 @@ export function CameraPanel({
   status,
   error,
   sessionEnded,
+  collapsed,
+  onToggleCollapsed,
   highlight = null,
 }: {
   camera: Camera;
@@ -44,23 +46,41 @@ export function CameraPanel({
   status: StatusEvent | null;
   error: string | null;
   sessionEnded: boolean;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   highlight?: Highlight;
 }) {
   return (
-    <section className="flex min-h-0 flex-col" aria-label="Camera feed">
+    <section className={`flex min-h-0 flex-col ${collapsed ? "max-h-10 overflow-hidden" : ""}`} aria-label="Camera feed">
       <header className="flex h-10 shrink-0 items-center justify-between gap-2 border-b border-stone-200 px-4">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-600">Camera feed</h2>
-        {camera.isActive && !sessionEnded ? (
-          <div className="flex items-center gap-1.5" aria-live="polite">
-            <Pill on={!!gate?.changed} label="changed" />
-            <Pill on={!!gate?.stable} label="stable" />
-            <span className="ml-1 text-xs text-stone-500">{status ? STAGE_LABEL[status.stage] : "Waiting…"}</span>
-          </div>
-        ) : !sessionEnded ? (
-          <span className="text-xs text-stone-400">Preview</span>
-        ) : null}
+        <div className="flex min-w-0 items-center gap-2">
+          {camera.isActive && !sessionEnded ? (
+            <div className="flex items-center gap-1.5" aria-live="polite">
+              <Pill on={!!gate?.changed} label="changed" />
+              <Pill on={!!gate?.stable} label="stable" />
+              <span className="ml-1 text-xs text-stone-500">{status ? STAGE_LABEL[status.stage] : "Waiting…"}</span>
+            </div>
+          ) : !sessionEnded ? (
+            <span className="text-xs text-stone-400">Preview</span>
+          ) : null}
+          <button
+            type="button"
+            aria-label={collapsed ? "Restore camera feed" : "Minimize camera feed"}
+            aria-expanded={!collapsed}
+            aria-controls="camera-feed-content"
+            onClick={onToggleCollapsed}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-stone-600 hover:bg-stone-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-emerald-700"
+            title={collapsed ? "Restore camera feed" : "Minimize camera feed"}
+          >
+            <span
+              aria-hidden="true"
+              className={collapsed ? "h-2.5 w-2.5 border border-current" : "h-px w-3 bg-current"}
+            />
+          </button>
+        </div>
       </header>
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-[#e9ece7] p-3">
+      <div id="camera-feed-content" className="flex min-h-0 flex-1 items-center justify-center bg-[#e9ece7] p-3">
         {sessionEnded ? (
           <div className="flex aspect-video w-full items-center justify-center text-sm font-medium text-stone-600">
             Session ended.

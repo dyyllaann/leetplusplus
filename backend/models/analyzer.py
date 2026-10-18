@@ -12,8 +12,14 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from backend.models import perceptron_client
-from backend.models.prompts import ANALYZE_SYSTEM, analyze_user
-from backend.models.schemas import AnalysisResult, ModelCall, Transcription, inline_json_schema
+from backend.models.prompts import ANALYZE_SYSTEM, CODE_REVIEW_SYSTEM, analyze_user, code_review_user
+from backend.models.schemas import (
+    AnalysisResult,
+    CodeReviewResult,
+    ModelCall,
+    Transcription,
+    inline_json_schema,
+)
 
 
 def _dump(obj: Any) -> Any:
@@ -28,6 +34,10 @@ class Analyzer(ABC):
     def analyze(self, image: bytes, mime: str, transcription: Transcription,
                 problem: str) -> ModelCall[AnalysisResult]:
         """Findings for the current board state."""
+
+    @abstractmethod
+    def review_code(self, problem: str, code: str, language: str) -> ModelCall[CodeReviewResult]:
+        """Review typed code without requiring a board image."""
 
 
 class PerceptronAnalyzer(Analyzer):
@@ -46,6 +56,16 @@ class PerceptronAnalyzer(Analyzer):
             mime=mime,
             schema_model=AnalysisResult,
             schema_name="analysis_result",
+            model=self.model,
+            reasoning_effort=self.reasoning_effort,
+        )
+
+    def review_code(self, problem, code, language):
+        return perceptron_client.structured_completion(
+            system=CODE_REVIEW_SYSTEM,
+            user_text=code_review_user(problem, language, code),
+            schema_model=CodeReviewResult,
+            schema_name="code_review",
             model=self.model,
             reasoning_effort=self.reasoning_effort,
         )
@@ -101,6 +121,38 @@ class GeminiAnalyzer(Analyzer):
             call.error = f"{type(exc).__name__}: {exc}"
         return call
 
+    def review_code(self, problem, code, language):
+        user_text = code_review_user(problem, language, code)
+        body: dict[str, Any] = {
+            "model": self.model,
+            "system_instruction": CODE_REVIEW_SYSTEM,
+            "input": [{"type": "text", "text": user_text}],
+            "response_format": {
+                "type": "text",
+                "mime_type": "application/json",
+                "schema": inline_json_schema(CodeReviewResult),
+            },
+        }
+        if self.thinking_level:
+            body["generation_config"] = {"thinking_level": self.thinking_level}
+
+        call: ModelCall[CodeReviewResult] = ModelCall(
+            provider="gemini", model=self.model, parsed=None, latency_s=0.0, request=body)
+        start = time.perf_counter()
+        try:
+            interaction = self.client.interactions.create(**body)
+            call.latency_s = time.perf_counter() - start
+            call.response = _dump(interaction)
+            usage = interaction.usage
+            if usage is not None:
+                call.input_tokens = usage.total_input_tokens
+                call.output_tokens = (usage.total_output_tokens or 0) + (usage.total_thought_tokens or 0)
+            call.parsed = CodeReviewResult.model_validate_json(interaction.output_text)
+        except Exception as exc:
+            call.latency_s = call.latency_s or time.perf_counter() - start
+            call.error = f"{type(exc).__name__}: {exc}"
+        return call
+
 
 class ClaudeAnalyzer(Analyzer):
     """Claude via the Anthropic SDK with structured outputs (messages.parse)."""
@@ -139,6 +191,42 @@ class ClaudeAnalyzer(Analyzer):
                 **params,
                 messages=[{"role": "user", "content": [image_block, {"type": "text", "text": user_text}]}],
                 output_format=AnalysisResult,
+            )
+            call.latency_s = time.perf_counter() - start
+            call.response = _dump(response)
+            call.input_tokens = response.usage.input_tokens
+            call.output_tokens = response.usage.output_tokens
+            if response.stop_reason == "refusal":
+                raise RuntimeError(f"refusal: {response.stop_details}")
+            if response.stop_reason == "max_tokens":
+                raise RuntimeError("stop_reason=max_tokens, output truncated")
+            call.parsed = response.parsed_output
+        except Exception as exc:
+            call.latency_s = call.latency_s or time.perf_counter() - start
+            call.error = f"{type(exc).__name__}: {exc}"
+        return call
+
+    def review_code(self, problem, code, language):
+        user_text = code_review_user(problem, language, code)
+        params: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": 4000,
+            "system": CODE_REVIEW_SYSTEM,
+            "thinking": {"type": "adaptive"},
+            "output_config": {"effort": self.effort},
+            "betas": ["server-side-fallback-2026-07-01"],
+            "fallbacks": "default",
+        }
+        call: ModelCall[CodeReviewResult] = ModelCall(
+            provider="claude", model=self.model, parsed=None, latency_s=0.0,
+            request={**params, "messages": [{"role": "user", "content": user_text}],
+                     "output_format": "CodeReviewResult"})
+        start = time.perf_counter()
+        try:
+            response = self.client.beta.messages.parse(
+                **params,
+                messages=[{"role": "user", "content": user_text}],
+                output_format=CodeReviewResult,
             )
             call.latency_s = time.perf_counter() - start
             call.response = _dump(response)

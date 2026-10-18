@@ -44,7 +44,8 @@ The editor may copy the board once ("Copy from board", client-side); nothing flo
 Request: `{ "code": "typed code as one string", "language": "python" }`
 The typed code takes priority. The first submit takes a board snapshot (code regions only,
 in reading order) and stops camera updates; later submits replace only the typed code and
-re-diff, so the editor stays editable. Sets the phase to `done`.
+re-diff, so the editor stays editable. Each submit is reviewed by the configured analyzer
+using text only; submitted code is never executed. Sets the phase to `done`.
 Response (also pushed on the WebSocket):
 ```json
 {
@@ -53,6 +54,15 @@ Response (also pushed on the WebSocket):
   "language": "python",
   "boardSnapshot": ["def f(a):", "  if x < 0:"],
   "typedCode": ["def f(a):", "    if x <= 0:"],
+  "review": {
+    "summary": "The condition excludes zero, which may be a valid boundary value.",
+    "findings": [{ "tier": 3, "category": "edge_case", "line": 2, "confidence": 0.92,
+      "message": "The condition does not handle zero." }]
+  },
+  "reviewProvider": "claude",
+  "reviewModel": "claude-opus-5-5",
+  "reviewLatencyS": 2.1,
+  "reviewError": null,
   "diff": [
     { "op": "same", "boardLine": 1, "typedLine": 1, "boardText": "def f(a):", "typedText": "def f(a):" },
     { "op": "changed", "boardLine": 2, "typedLine": 2, "boardText": "  if x < 0:", "typedText": "    if x <= 0:" }

@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 
-from backend.models.schemas import Transcription
+from backend.models.schemas import CodeReviewResult, Transcription
 
 Op = Literal["same", "formatting", "changed", "added", "removed"]
 
@@ -73,6 +73,11 @@ class Submission:
     diff: list[DiffLine] = field(default_factory=list)
     language: str | None = None
     submitted_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    review: CodeReviewResult | None = None
+    review_provider: str | None = None
+    review_model: str | None = None
+    review_latency_s: float | None = None
+    review_error: str | None = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -85,6 +90,9 @@ class Submission:
         return {"type": "submission", "submittedAt": self.submitted_at, "language": self.language,
                 "boardSnapshot": self.board_snapshot, "typedCode": self.typed_code,
                 "diff": [d.as_json() for d in self.diff], "counts": self.counts,
+                "review": self.review.model_dump(mode="json") if self.review else None,
+                "reviewProvider": self.review_provider, "reviewModel": self.review_model,
+                "reviewLatencyS": self.review_latency_s, "reviewError": self.review_error,
                 # True when the typed code changed anything beyond whitespace.
                 "changedAfterBoard": any(d.op in ("changed", "added", "removed") for d in self.diff)}
 

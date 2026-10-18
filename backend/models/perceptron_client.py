@@ -56,8 +56,8 @@ def structured_completion(
     *,
     system: str,
     user_text: str,
-    image: bytes,
-    mime: str,
+    image: bytes | None = None,
+    mime: str | None = None,
     schema_model: type[T],
     schema_name: str,
     model: str = DEFAULT_MODEL,
@@ -65,17 +65,19 @@ def structured_completion(
     max_completion_tokens: int = 8192,
     timeout_s: float = 180.0,
 ) -> ModelCall[T]:
+    if image is not None and mime is None:
+        raise ValueError("mime is required when image is provided")
+    user_content: str | list[dict[str, Any]] = user_text
+    if image is not None:
+        user_content = [
+            {"type": "image_url", "image_url": {"url": data_url(image, mime)}},
+            {"type": "text", "text": user_text},
+        ]
     payload: dict[str, Any] = {
         "model": model,
         "messages": [
             {"role": "system", "content": system},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": data_url(image, mime)}},
-                    {"type": "text", "text": user_text},
-                ],
-            },
+            {"role": "user", "content": user_content},
         ],
         "response_format": {
             "type": "json_schema",

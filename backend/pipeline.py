@@ -34,17 +34,49 @@ def models() -> tuple[Transcriber, Analyzer]:
 
 
 def normalize_region_ids(t: Transcription) -> Transcription:
-    """Model-chosen ids drift between passes ("code", "code_block", ...). Renumber
-    by type in reading order so findings keep a stable region_id, and renumber lines."""
+    """Merge adjacent one-line code fragments and assign stable IDs and line numbers."""
     regions = sorted(t.regions, key=lambda r: (r.bbox.y1, r.bbox.x1))
+    grouped: list[Region] = []
+    last_group_is_fragments = False
+    for region in regions:
+        if grouped and _can_merge_code_fragments(grouped[-1], region, last_group_is_fragments):
+            previous = grouped[-1]
+            lines = sorted(previous.lines + region.lines,
+                           key=lambda line: (line.bbox.y1 if line.bbox else region.bbox.y1,
+                                             line.bbox.x1 if line.bbox else region.bbox.x1))
+            grouped[-1] = previous.model_copy(update={
+                "bbox": BBox(x1=min(previous.bbox.x1, region.bbox.x1),
+                             y1=min(previous.bbox.y1, region.bbox.y1),
+                             x2=max(previous.bbox.x2, region.bbox.x2),
+                             y2=max(previous.bbox.y2, region.bbox.y2)),
+                "lines": lines,
+            })
+            last_group_is_fragments = True
+        else:
+            grouped.append(region)
+            last_group_is_fragments = region.type == "code" and len(region.lines) == 1
+
     counts: dict[str, int] = {}
     renamed = []
-    for r in regions:
+    for r in grouped:
         counts[r.type] = counts.get(r.type, 0) + 1
         # Line numbers are also reassigned: the model sometimes repeats or skips them.
         lines = [ln.model_copy(update={"n": i}) for i, ln in enumerate(r.lines, 1)]
         renamed.append(r.model_copy(update={"id": f"{r.type}_{counts[r.type]}", "lines": lines}))
     return Transcription(regions=renamed)
+
+
+def _can_merge_code_fragments(previous: Region, current: Region, previous_is_fragments: bool) -> bool:
+    if previous.type != "code" or current.type != "code":
+        return False
+    if (len(previous.lines) != 1 and not previous_is_fragments) or len(current.lines) != 1:
+        return False
+
+    previous_box = previous.lines[-1].bbox or previous.bbox
+    current_box = current.lines[0].bbox or current.bbox
+    vertical_gap = current_box.y1 - previous_box.y2
+    horizontal_overlap = min(previous_box.x2, current_box.x2) - max(previous_box.x1, current_box.x1)
+    return -40 <= vertical_gap <= 45 and horizontal_overlap > 0
 
 
 def apply_corrections(t: Transcription, corrections: list[Correction],

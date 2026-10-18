@@ -44,7 +44,7 @@ class LineReading(_Strict):
 
 class Region(_Strict):
     id: str
-    type: Literal["code", "diagram", "examples", "trace"]
+    type: Literal["code", "heading", "diagram", "examples", "trace"]
     bbox: BBox
     lines: list[Line]
 
@@ -66,7 +66,7 @@ class LineNoBox(_Strict):
 
 class RegionNoBox(_Strict):
     id: str
-    type: Literal["code", "diagram", "examples", "trace"]
+    type: Literal["code", "heading", "diagram", "examples", "trace"]
     bbox: BBox
     lines: list[LineNoBox]
 
@@ -107,6 +107,19 @@ class AnalysisResult(_Strict):
     region_rewrites: list[RegionRewrite] = Field(
         description="Regions whose transcription invented or missed lines, rewritten in full"
     )
+
+
+class CodeReviewFinding(_Strict):
+    tier: Literal[1, 2, 3, 4] = Field(description="1 approach, 2 logic, 3 edge case, 4 syntax")
+    category: str
+    line: int = Field(description="1-based line number, or 0 when not line-specific")
+    confidence: float = Field(ge=0, le=1)
+    message: str
+
+
+class CodeReviewResult(_Strict):
+    summary: str
+    findings: list[CodeReviewFinding]
 
 
 # --- Call metadata (not a model output) --------------------------------------

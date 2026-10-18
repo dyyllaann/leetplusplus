@@ -18,7 +18,7 @@ export interface BoardLine {
 
 export interface Region {
   id: string;
-  type: "code" | "diagram" | "examples" | "trace";
+  type: "code" | "heading" | "diagram" | "examples" | "trace";
   /** Normalized 0-1 relative to the frame. */
   bbox: { x: number; y: number; width: number; height: number };
   lines: BoardLine[];
@@ -102,6 +102,14 @@ export interface Submission {
   typedCode: string[];
   diff: DiffLine[];
   counts: Record<DiffOp, number>;
+  review: {
+    summary: string;
+    findings: { tier: 1 | 2 | 3 | 4; category: string; line: number; confidence: number; message: string }[];
+  } | null;
+  reviewProvider: string | null;
+  reviewModel: string | null;
+  reviewLatencyS: number | null;
+  reviewError: string | null;
   changedAfterBoard: boolean;
 }
 

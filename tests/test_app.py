@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 from backend import app as app_module
 from backend import config, pipeline
-from backend.models.schemas import AnalysisResult, Finding, ModelCall, Transcription
+from backend.models.schemas import (AnalysisResult, BBox, CodeReviewFinding, CodeReviewResult,
+                                    Finding, Line, ModelCall, Region, Transcription)
 
 FRAME = "data:image/png;base64," + base64.b64encode(
     (Path(__file__).parents[1] / "fixtures/whiteboard_1.png").read_bytes()).decode()
@@ -30,6 +31,15 @@ class FakeAnalyzer:
         result = AnalysisResult(findings=[Finding(
             tier=2, category="logic", line=1, region_id="code_1", confidence=0.9, message="m")],
             transcription_corrections=[], region_rewrites=[])
+        return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
+
+    def review_code(self, problem, code, language):
+        assert "Two Sum" in problem and code and language in {"js", "unspecified"}
+        result = CodeReviewResult(
+            summary="The submitted loop does not check every pair.",
+            findings=[CodeReviewFinding(
+                tier=2, category="logic", line=2, confidence=0.95,
+                message="The loop stops before checking the final element.")])
         return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
 
 
@@ -85,6 +95,33 @@ def test_region_ids_are_normalized_by_type_and_position():
         {"id": "ex", "type": "examples", "bbox": {"x1": 0, "y1": 300, "x2": 10, "y2": 400}, "lines": []},
     ]})
     assert [r.id for r in pipeline.normalize_region_ids(t).regions] == ["code_1", "examples_1", "code_2"]
+
+
+def test_adjacent_one_line_code_regions_merge_but_heading_stays_separate():
+    lines = [
+        "def twoSum(self, nums, target) -> List[int]:",
+        "seen = {}",
+        "for i, n in enumerate(nums):",
+        "complement = target - n",
+        "if complement in seen:",
+        "return [seen.get(complement), i )",
+        "seen[n] = i",
+    ]
+    regions = [Region(type="heading", id="title", bbox=BBox(x1=130, y1=250, x2=266, y2=310),
+                      lines=[Line(n=1, text="TWO SUM", low_confidence_chars=[],
+                                  bbox=BBox(x1=130, y1=250, x2=266, y2=310))])]
+    for index, text in enumerate(lines):
+        y1 = 320 + index * 90
+        line_box = BBox(x1=180 + index * 5, y1=y1, x2=700, y2=y1 + 65)
+        regions.append(Region(type="code", id=f"line_{index}", bbox=line_box,
+                              lines=[Line(n=1, text=text, low_confidence_chars=[], bbox=line_box)]))
+
+    transcription = pipeline.normalize_region_ids(Transcription(regions=regions))
+
+    assert [region.id for region in transcription.regions] == ["heading_1", "code_1"]
+    code = transcription.regions[1]
+    assert [line.text for line in code.lines] == lines
+    assert [line.n for line in code.lines] == list(range(1, len(lines) + 1))
 
 
 def test_unchanged_board_text_skips_analyzer(monkeypatch, tmp_path):
@@ -220,5 +257,7 @@ def test_submit_keeps_board_snapshot_and_allows_resubmit(client):
     second = client.post(f"/sessions/{sid}/submit", json={"code": "str2 = str2.split('');"}).json()
     assert second["boardSnapshot"] == first["boardSnapshot"]
     assert second["changedAfterBoard"] is False
+    assert second["review"]["summary"] == "The submitted loop does not check every pair."
+    assert second["review"]["findings"][0]["line"] == 2
     assert client.get(f"/sessions/{sid}/submission").json()["typedCode"] == ["str2 = str2.split('');"]
     assert session.phase == "done"

@@ -154,7 +154,7 @@ export function EditorTab({
           title={sessionId ? undefined : "Start a session to submit"}
           className="rounded bg-emerald-700 px-3 py-1 text-xs font-semibold text-white enabled:hover:bg-emerald-800 disabled:opacity-50"
         >
-          {busy ? "Submitting…" : latest ? "Resubmit" : "Submit"}
+          {busy ? "Submitting and reviewing…" : latest ? "Resubmit" : "Submit"}
         </button>
       </div>
 

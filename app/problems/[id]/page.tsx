@@ -46,6 +46,7 @@ function SessionView({ problem }: { problem: Problem }) {
   const sideRef = useRef<HTMLDivElement>(null);
   const [promptWidth, setPromptWidth] = useState(62);
   const [videoHeight, setVideoHeight] = useState(54);
+  const [cameraCollapsed, setCameraCollapsed] = useState(false);
   const [resizeTarget, setResizeTarget] = useState<ResizeTarget | null>(null);
   const camera = useCamera();
   const boardSession = useBoardSession(problem.id, camera.videoRef);
@@ -321,7 +322,11 @@ function SessionView({ problem }: { problem: Problem }) {
         <div
           ref={sideRef}
           className="workspace-side min-h-0 bg-white"
-          style={{ "--video-ratio": `${videoHeight}fr`, "--editor-ratio": `${100 - videoHeight}fr` } as React.CSSProperties}
+          style={{
+            "--video-ratio": cameraCollapsed ? "40px" : `${videoHeight}fr`,
+            "--editor-ratio": cameraCollapsed ? "1fr" : `${100 - videoHeight}fr`,
+            "--side-resizer-height": cameraCollapsed ? "0px" : "8px",
+          } as React.CSSProperties}
         >
           <CameraPanel
             camera={camera}
@@ -330,6 +335,8 @@ function SessionView({ problem }: { problem: Problem }) {
             status={boardSession.status}
             error={camera.error ?? boardSession.connectionError}
             sessionEnded={hasSessionStarted && !isSessionActive}
+            collapsed={cameraCollapsed}
+            onToggleCollapsed={() => setCameraCollapsed((collapsed) => !collapsed)}
             highlight={voice.highlight}
           />
 
@@ -341,7 +348,7 @@ function SessionView({ problem }: { problem: Problem }) {
             aria-valuemax={70}
             aria-valuenow={Math.round(videoHeight)}
             tabIndex={0}
-            className="workspace-resizer hidden lg:flex"
+            className={`workspace-resizer hidden lg:flex ${cameraCollapsed ? "invisible" : ""}`}
             onPointerDown={(event) => startResize("rows", event)}
             onKeyDown={(event) => resizeByKeyboard("rows", event)}
           />
