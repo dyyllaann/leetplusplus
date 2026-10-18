@@ -22,8 +22,18 @@ Response: the latest `boardState` event payload (see below), or 404.
 
 ### `POST /sessions/{sessionId}/trigger`
 Request: `{ "reason": "candidate_stopped_speaking" }`
-Asks for an analysis pass as soon as the board is stable, skipping the 5 s interval.
+Asks for an analysis pass as soon as the board is stable, skipping the analysis interval
+(5 s, measured from the start of the previous pass).
 Response: `{ "ok": true }`
+
+### `POST /sessions/{sessionId}/sync`
+Request: `{ "timeoutSeconds": 2.5 }` (capped at 10)
+Waits until the transcription reflects the board as it is now (no unanalyzed change and no
+transcription in flight), then returns. Skips the analysis interval if a change is waiting.
+Response: `{ "fresh": true, "boardState": { ...boardState payload... } }`
+`fresh: false` means the timeout passed first (candidate still writing, or a slow model call);
+`boardState` is then the latest available. **The voice layer must call this at the end of each
+candidate turn before generating a reply**, and say a short holding line if `fresh` is false.
 
 ### `POST /sessions/{sessionId}/end`
 Response: `{ "ok": true }`
@@ -50,12 +60,15 @@ Pipeline status:
 { "type": "status", "stage": "transcribing" | "analyzing" | "idle" | "error", "detail": "optional text" }
 ```
 
-Board state after each completed pass:
+Board state, sent twice per pass: once as soon as the transcription returns
+(`analysisPending: true`, findings from the previous pass), and again when the analyzer
+finishes (`analysisPending: false`, updated findings):
 ```json
 {
   "type": "boardState",
   "pass": 3,
   "updatedAt": "2026-10-17T21:00:05.000Z",
+  "analysisPending": false,
   "regions": [
     {
       "id": "code_1",

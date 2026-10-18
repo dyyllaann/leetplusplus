@@ -35,3 +35,23 @@ def test_board_state_normalizes_bbox_and_uses_camel_case():
     assert state["regions"][0]["bbox"] == {"x": 0.1, "y": 0.2, "width": 0.5, "height": 0.6}
     assert state["regions"][0]["lines"][0]["lowConfidenceChars"] == []
     assert state["findings"][0]["regionId"] == "code_1" and state["findings"][0]["severity"] == 2
+
+
+def test_transcription_published_before_analysis_keeps_old_findings():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(T, [f(1)])
+    s.apply_transcription(T)
+    state = s.board_state()
+    assert state["analysisPending"] is True
+    assert state["pass"] == 1 and state["findings"][0]["id"] == "f1"
+    s.apply_pass(T, [f(1)])
+    assert s.board_state()["analysisPending"] is False
+
+
+def test_is_current_requires_no_transcription_in_flight_and_no_pending_change():
+    s = Session(id="s", problem_id="p", problem_text="")
+    assert s.is_current()
+    s.pending_change = True
+    assert not s.is_current()
+    s.pending_change, s.transcribing = False, True
+    assert not s.is_current()

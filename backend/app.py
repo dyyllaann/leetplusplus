@@ -47,6 +47,10 @@ class Trigger(BaseModel):
     reason: str = "manual"
 
 
+class Sync(BaseModel):
+    timeoutSeconds: float = 2.5
+
+
 def require(session_id: str) -> Session:
     session = store.get(session_id)
     if session is None:
@@ -102,6 +106,19 @@ def trigger(session_id: str, body: Trigger) -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.post("/sessions/{session_id}/sync")
+async def sync(session_id: str, body: Sync) -> dict[str, Any]:
+    """Wait until the transcription reflects the current board, up to timeoutSeconds.
+    Call this before the voice agent answers anything about the board."""
+    session = require(session_id)
+    if session.pending_change:
+        session.trigger_reason = "sync"  # skip the analysis interval
+    deadline = time.monotonic() + max(0.0, min(body.timeoutSeconds, 10.0))
+    while not session.is_current() and time.monotonic() < deadline:
+        await asyncio.sleep(0.1)
+    return {"fresh": session.is_current(), "boardState": session.board_state()}
+
+
 @app.post("/sessions/{session_id}/end")
 def end_session(session_id: str) -> dict[str, bool]:
     require(session_id).ended = True
@@ -119,6 +136,7 @@ async def _pass_task(session: Session, image: bytes, mime: str) -> None:
         session.last_pass_at = time.monotonic()
         if not ok:
             session.gate.reset_analyzed()
+        session.transcribing = False
         session.busy = False
 
 
@@ -146,10 +164,14 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
 
             now = time.monotonic()
             gate = session.gate.update(thumb, now)
+            session.pending_change = gate.changed
             await ws.send_json({"type": "gate", "changed": gate.changed,
                                 "stable": gate.stable, "busy": session.busy})
             if gate.ready and not session.busy and session.due(now, config.ANALYSIS_INTERVAL_SECONDS):
                 session.busy = True
+                session.transcribing = True
+                session.pending_change = False
+                session.pass_started_at = now
                 session.gate.mark_analyzed(thumb)
                 asyncio.create_task(_pass_task(session, image, mime))
     except WebSocketDisconnect:

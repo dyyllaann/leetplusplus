@@ -76,6 +76,7 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
 
     await emit({"type": "status", "stage": "transcribing"})
     t_call = await asyncio.to_thread(transcriber.transcribe, image, mime)
+    session.transcribing = False
     save_call(session.log_dir, f"{n:03d}_transcription", t_call)
     if t_call.parsed is None:
         await emit({"type": "status", "stage": "error", "detail": f"transcription: {t_call.error}"})
@@ -88,15 +89,23 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         await emit({"type": "status", "stage": "idle", "detail": "board text unchanged"})
         return True
 
-    await emit({"type": "status", "stage": "analyzing"})
+    # Publish the new text now; the analyzer (the slower call) runs afterwards.
+    session.apply_transcription(transcription)
+    await emit(session.board_state())
+    await emit({"type": "status", "stage": "analyzing",
+                "detail": f"transcribed in {t_call.latency_s:.1f}s"})
     a_call = await asyncio.to_thread(analyzer.analyze, image, mime, transcription, session.problem_text)
     save_call(session.log_dir, f"{n:03d}_analysis", a_call)
     if a_call.parsed is None:
+        session.analysis_pending = False
         await emit({"type": "status", "stage": "error", "detail": f"analysis: {a_call.error}"})
+        # The transcription is already published; returning False retries the
+        # analysis on the next stable frame.
         return False
 
     corrected, originals = apply_corrections(transcription, a_call.parsed.transcription_corrections)
     session.apply_pass(corrected, a_call.parsed.findings, raw=transcription, corrected_lines=originals)
     await emit(session.board_state())
-    await emit({"type": "status", "stage": "idle"})
+    await emit({"type": "status", "stage": "idle",
+                "detail": f"transcribed {t_call.latency_s:.1f}s, analyzed {a_call.latency_s:.1f}s"})
     return True

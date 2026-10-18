@@ -40,6 +40,8 @@ export interface BoardState {
   type: "boardState";
   pass: number;
   updatedAt: string | null;
+  /** True when regions are newer than findings (analyzer still running on this text). */
+  analysisPending: boolean;
   regions: Region[];
   findings: Finding[];
 }

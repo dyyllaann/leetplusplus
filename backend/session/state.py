@@ -49,7 +49,15 @@ class Session:
     history: list[Transcription] = field(default_factory=list)
     findings: list[TrackedFinding] = field(default_factory=list)
     busy: bool = False
+    # True from pass start until the transcriber returns. The voice layer waits on this
+    # (via /sync) so it never answers about the board from a stale transcription.
+    transcribing: bool = False
+    # Latest frame differs from the last analyzed frame (updated on every frame).
+    pending_change: bool = False
+    # Transcription is newer than the findings: analyzer still running for this text.
+    analysis_pending: bool = False
     last_pass_at: float = 0.0
+    pass_started_at: float = 0.0
     trigger_reason: str | None = None
     updated_at: str | None = None
     ended: bool = False
@@ -60,7 +68,21 @@ class Session:
         return LOG_ROOT / self.id
 
     def due(self, now: float, interval: float) -> bool:
-        return self.trigger_reason is not None or now - self.last_pass_at >= interval
+        # Measured from pass START, so a slow pass does not add the full interval on top.
+        return self.trigger_reason is not None or now - self.pass_started_at >= interval
+
+    def is_current(self) -> bool:
+        """Transcription reflects the board as it is now."""
+        return not self.transcribing and not self.pending_change
+
+    def apply_transcription(self, transcription: Transcription) -> None:
+        """Publish new board text before the analyzer finishes. Findings are left
+        as they are until apply_pass; analysis_pending marks them as possibly stale."""
+        self.transcription = transcription
+        self.raw_transcription = transcription
+        self.corrected_lines = {}
+        self.analysis_pending = True
+        self.updated_at = datetime.now(timezone.utc).isoformat()
 
     def mark_unchanged_pass(self) -> None:
         self.last_pass_at = time.monotonic()
@@ -74,6 +96,7 @@ class Session:
         self.pass_count += 1
         self.last_pass_at = time.monotonic()
         self.trigger_reason = None
+        self.analysis_pending = False
         self.updated_at = datetime.now(timezone.utc).isoformat()
         self.transcription = transcription
         self.raw_transcription = raw or transcription
@@ -123,6 +146,7 @@ class Session:
             "confidence": t.finding.confidence, "message": t.finding.message, "status": t.status,
         } for t in self.findings]
         return {"type": "boardState", "pass": self.pass_count, "updatedAt": self.updated_at,
+                "analysisPending": self.analysis_pending,
                 "regions": regions, "findings": findings}
 
 

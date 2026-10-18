@@ -54,7 +54,7 @@ def test_frame_produces_board_state(client):
         while time.time() < deadline:
             ev = ws.receive_json()
             events.append(ev)
-            if ev["type"] == "boardState":
+            if ev["type"] == "boardState" and not ev["analysisPending"]:
                 break
     types = [e["type"] for e in events]
     assert types[0] == "gate" and "boardState" in types
@@ -145,3 +145,31 @@ def test_analyzer_corrections_patch_board_state_and_keep_skip_working(monkeypatc
     # Same raw transcription next pass: analyzer is skipped even though displayed text differs.
     asyncio.run(pipeline.run_pass(s, b"img", "image/jpeg", emit))
     assert len(calls) == 1
+
+
+def test_board_state_sent_before_analysis_finishes(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    with client.websocket_connect(f"/sessions/{sid}/ws") as ws:
+        ws.send_json({"type": "frame", "capturedAt": "t", "imageData": FRAME})
+        states = []
+        deadline = time.time() + 5
+        while time.time() < deadline and len(states) < 2:
+            ev = ws.receive_json()
+            if ev["type"] == "boardState":
+                states.append(ev)
+    assert [s["analysisPending"] for s in states] == [True, False]
+    assert states[0]["regions"] and states[1]["findings"]
+
+
+def test_sync_returns_fresh_board_when_idle(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    body = client.post(f"/sessions/{sid}/sync", json={"timeoutSeconds": 0.5}).json()
+    assert body["fresh"] is True and body["boardState"]["type"] == "boardState"
+
+
+def test_sync_times_out_while_change_is_pending(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    app_module.store.get(sid).pending_change = True
+    start = time.time()
+    body = client.post(f"/sessions/{sid}/sync", json={"timeoutSeconds": 0.3}).json()
+    assert body["fresh"] is False and time.time() - start >= 0.3
