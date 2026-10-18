@@ -70,3 +70,20 @@ export function setSessionPhase(sessionId: string, phase: import("@/lib/types").
 export function addTranscriptTurn(sessionId: string, role: "candidate" | "interviewer", text: string): Promise<{ ok: boolean }> {
   return post(`/sessions/${sessionId}/transcript`, { role, text });
 }
+
+// --- Code submission (docs/api.md, "Code submission") ---
+
+/** Submit the editor's typed code. Can be called again after edits; the board snapshot stays. */
+export function submitCode(sessionId: string, code: string, language?: string): Promise<import("@/lib/types").Submission> {
+  return post(`/sessions/${sessionId}/submit`, { code, language });
+}
+
+/** Code lines from the board's code regions, for the editor's one-time "Copy from board". */
+export function boardCodeText(board: import("@/lib/types").BoardState | null): string {
+  if (!board) return "";
+  return board.regions
+    .filter((r) => r.type === "code")
+    .sort((a, b) => a.bbox.y - b.bbox.y || a.bbox.x - b.bbox.x)
+    .flatMap((r) => r.lines.map((l) => l.text))
+    .join("\n");
+}

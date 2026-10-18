@@ -28,6 +28,7 @@ from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
 from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
 from backend import policy, voice_tools  # noqa: E402
+from backend.submission import Submission, line_diff, submit as make_submission  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
@@ -56,6 +57,11 @@ class Sync(BaseModel):
 class ToolCall(BaseModel):
     name: str
     args: dict[str, Any] = {}
+
+
+class SubmitCode(BaseModel):
+    code: str
+    language: str | None = None
 
 
 class PhaseUpdate(BaseModel):
@@ -177,6 +183,34 @@ def add_transcript(session_id: str, body: TranscriptTurn) -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.post("/sessions/{session_id}/submit")
+async def submit_code(session_id: str, body: SubmitCode) -> dict[str, Any]:
+    """Submit the typed code, which takes priority over the board. The first submit takes
+    a board snapshot; later submits replace only the typed code and re-diff, so the typed
+    code stays editable."""
+    session = require(session_id)
+    if session.submission is None:
+        sub = make_submission(session.transcription, body.code, body.language)
+    else:
+        prev: Submission = session.submission
+        sub = make_submission(None, body.code, body.language)
+        sub.board_snapshot = prev.board_snapshot
+        sub.diff = line_diff(prev.board_snapshot, sub.typed_code)
+    session.submission = sub
+    session.phase = "done"
+    event = sub.as_json()
+    await broadcast(session_id, event)
+    return event
+
+
+@app.get("/sessions/{session_id}/submission")
+def get_submission(session_id: str) -> dict[str, Any]:
+    session = require(session_id)
+    if session.submission is None:
+        raise HTTPException(404, "not submitted")
+    return session.submission.as_json()
+
+
 @app.post("/sessions/{session_id}/end")
 def end_session(session_id: str) -> dict[str, bool]:
     require(session_id).ended = True
@@ -211,7 +245,8 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
     try:
         while True:
             msg = await ws.receive_json()
-            if msg.get("type") != "frame" or session.ended:
+            # After the first submit the board snapshot is fixed: the camera stops updating it.
+            if msg.get("type") != "frame" or session.ended or session.submission is not None:
                 continue
             try:
                 image, mime = decode_data_url(msg["imageData"])

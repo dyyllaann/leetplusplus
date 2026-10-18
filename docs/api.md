@@ -35,6 +35,38 @@ Response: `{ "fresh": true, "boardState": { ...boardState payload... } }`
 `boardState` is then the latest available. **The voice layer must call this at the end of each
 candidate turn before generating a reply**, and say a short holding line if `fresh` is false.
 
+## Code submission (backend/submission.py)
+
+The board tab (live transcription) and the editor tab (typed code) are never synced.
+The editor may copy the board once ("Copy from board", client-side); nothing flows back.
+
+### `POST /sessions/{sessionId}/submit`
+Request: `{ "code": "typed code as one string", "language": "python" }`
+The typed code takes priority. The first submit takes a board snapshot (code regions only,
+in reading order) and stops camera updates; later submits replace only the typed code and
+re-diff, so the editor stays editable. Sets the phase to `done`.
+Response (also pushed on the WebSocket):
+```json
+{
+  "type": "submission",
+  "submittedAt": "2026-10-18T07:40:00+00:00",
+  "language": "python",
+  "boardSnapshot": ["def f(a):", "  if x < 0:"],
+  "typedCode": ["def f(a):", "    if x <= 0:"],
+  "diff": [
+    { "op": "same", "boardLine": 1, "typedLine": 1, "boardText": "def f(a):", "typedText": "def f(a):" },
+    { "op": "changed", "boardLine": 2, "typedLine": 2, "boardText": "  if x < 0:", "typedText": "    if x <= 0:" }
+  ],
+  "counts": { "same": 1, "formatting": 0, "changed": 1, "added": 0, "removed": 0 },
+  "changedAfterBoard": true
+}
+```
+`op`: `same`, `formatting` (whitespace only), `changed`, `added` (typed only), `removed`
+(board only). `changedAfterBoard` is true when anything beyond whitespace differs.
+
+### `GET /sessions/{sessionId}/submission`
+The latest submission payload, or 404 before the first submit.
+
 ## Voice agent (backend/policy.py, backend/voice_tools.py)
 
 ### `GET /sessions/{sessionId}/voice-config`

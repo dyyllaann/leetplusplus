@@ -81,7 +81,29 @@ export interface InterjectionRelease {
 
 export type SessionPhase = "clarifying" | "writing" | "tracing" | "done";
 
-export type ServerEvent = BoardState | GateEvent | StatusEvent | HighlightEvent;
+export type DiffOp = "same" | "formatting" | "changed" | "added" | "removed";
+
+export interface DiffLine {
+  op: DiffOp;
+  boardLine: number | null;
+  typedLine: number | null;
+  boardText: string | null;
+  typedText: string | null;
+}
+
+/** Typed code takes priority; boardSnapshot is the board at the first submit. */
+export interface Submission {
+  type: "submission";
+  submittedAt: string;
+  language: string | null;
+  boardSnapshot: string[];
+  typedCode: string[];
+  diff: DiffLine[];
+  counts: Record<DiffOp, number>;
+  changedAfterBoard: boolean;
+}
+
+export type ServerEvent = BoardState | GateEvent | StatusEvent | HighlightEvent | Submission;
 
 export interface TranscriptTurn {
   role: "candidate" | "interviewer";

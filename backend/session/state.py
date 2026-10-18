@@ -110,6 +110,7 @@ class Session:
     trigger_reason: str | None = None
     updated_at: str | None = None
     ended: bool = False
+    submission: Any = None  # backend.submission.Submission once the candidate submits
     _ids: Any = field(default_factory=lambda: itertools.count(1))
 
     @property

@@ -64,8 +64,11 @@ Voice wiring (backend side is built; the Gemini Live client must call it, see do
   3 edge case -> ask during trace or at end; 4 syntax -> never interrupt, report only.
 - One interruption at a time; highest tier first.
 - Findings below the confidence threshold become questions, not corrections.
-- The whiteboard is the only input. The editor is a read-only mirror; manual edits are
-  transcription corrections only.
+- During the session the whiteboard is the only input the interviewer and analyzer see.
+  The board tab is a read-only mirror (manual edits are transcription corrections only).
+- The editor tab is separate typed code: copied from the board once on request, never
+  auto-synced in either direction. On submit the typed code takes priority, and a line diff
+  against the board snapshot records what changed (backend/submission.py).
 - Audio goes only to the voice model. Other models receive the transcript as text.
 - The voice model never receives camera frames, even though Gemini Live supports video.
   All board information reaches it as text context from the backend, after the policy.

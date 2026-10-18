@@ -186,3 +186,18 @@ def test_voice_endpoints(client):
     assert client.post(f"/sessions/{sid}/phase", json={"phase": "nap"}).status_code == 422
     assert client.post(f"/sessions/{sid}/tools", json={"name": "give_hint", "args": {"level": 1}}).json()["ok"]
     assert client.post(f"/sessions/{sid}/transcript", json={"role": "candidate", "text": "hi"}).json()["ok"]
+
+
+def test_submit_keeps_board_snapshot_and_allows_resubmit(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    session = app_module.store.get(sid)
+    session.apply_pass(T, [])
+    first = client.post(f"/sessions/{sid}/submit", json={"code": "a = 1", "language": "js"}).json()
+    assert first["boardSnapshot"] == ["str2 = str2.split('');"] and first["typedCode"] == ["a = 1"]
+    # The board changes after submit; the snapshot does not, and typed code can be resubmitted.
+    session.apply_pass(Transcription.model_validate({"regions": []}), [])
+    second = client.post(f"/sessions/{sid}/submit", json={"code": "str2 = str2.split('');"}).json()
+    assert second["boardSnapshot"] == first["boardSnapshot"]
+    assert second["changedAfterBoard"] is False
+    assert client.get(f"/sessions/{sid}/submission").json()["typedCode"] == ["str2 = str2.split('');"]
+    assert session.phase == "done"
