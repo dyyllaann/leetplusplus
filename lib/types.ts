@@ -61,7 +61,27 @@ export interface StatusEvent {
   detail?: string;
 }
 
-export type ServerEvent = BoardState | GateEvent | StatusEvent;
+export interface HighlightEvent {
+  type: "highlight";
+  regionId: string;
+  /** 0 means the whole region. */
+  line: number;
+}
+
+export interface InterjectionRelease {
+  findingId: string;
+  regionId: string;
+  line: number;
+  tier: 1 | 2 | 3;
+  category: string;
+  mode: "statement" | "question";
+  /** Send to the voice model as "INTERJECT: " + instruction. Never contains the fix. */
+  instruction: string;
+}
+
+export type SessionPhase = "clarifying" | "writing" | "tracing" | "done";
+
+export type ServerEvent = BoardState | GateEvent | StatusEvent | HighlightEvent;
 
 export interface TranscriptTurn {
   role: "candidate" | "interviewer";

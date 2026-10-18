@@ -42,3 +42,31 @@ export interface SyncResult {
 export function syncBoard(sessionId: string, timeoutSeconds = 2.5): Promise<SyncResult> {
   return post(`/sessions/${sessionId}/sync`, { timeoutSeconds });
 }
+
+// --- Voice agent (docs/api.md, "Voice agent") ---
+
+type FunctionDeclaration = { name: string; description: string; parameters: Record<string, unknown> };
+
+export async function getVoiceConfig(sessionId: string): Promise<{ systemPrompt: string; tools: FunctionDeclaration[] }> {
+  const res = await fetch(`${BACKEND_URL}/sessions/${sessionId}/voice-config`);
+  if (!res.ok) throw new Error(`voice-config failed: ${res.status}`);
+  return res.json();
+}
+
+/** Execute a tool call from the voice model; pass the result back to it as the tool response. */
+export function runVoiceTool(sessionId: string, name: string, args: Record<string, unknown>): Promise<Record<string, unknown>> {
+  return post(`/sessions/${sessionId}/tools`, { name, args });
+}
+
+/** Ask the policy whether to raise a finding now. */
+export function pollInterjection(sessionId: string): Promise<{ release: import("@/lib/types").InterjectionRelease | null }> {
+  return post(`/sessions/${sessionId}/interjection`, {});
+}
+
+export function setSessionPhase(sessionId: string, phase: import("@/lib/types").SessionPhase): Promise<{ ok: boolean }> {
+  return post(`/sessions/${sessionId}/phase`, { phase });
+}
+
+export function addTranscriptTurn(sessionId: string, role: "candidate" | "interviewer", text: string): Promise<{ ok: boolean }> {
+  return post(`/sessions/${sessionId}/transcript`, { role, text });
+}

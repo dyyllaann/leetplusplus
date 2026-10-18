@@ -35,6 +35,34 @@ Response: `{ "fresh": true, "boardState": { ...boardState payload... } }`
 `boardState` is then the latest available. **The voice layer must call this at the end of each
 candidate turn before generating a reply**, and say a short holding line if `fresh` is false.
 
+## Voice agent (backend/policy.py, backend/voice_tools.py)
+
+### `GET /sessions/{sessionId}/voice-config`
+Response: `{ "systemPrompt": "...", "tools": [ ...function declarations... ] }`
+Register both with the Gemini Live session. The prompt includes the problem text.
+
+### `POST /sessions/{sessionId}/tools`
+Request: `{ "name": "point_to_region", "args": { "region_id": "code_1", "line": 4 } }`
+Executes a voice-agent tool call. Return the response JSON to the model as the tool result.
+Only `ask_question`, `point_to_region`, `flag_error_type`, `give_hint` are accepted.
+`point_to_region` and `flag_error_type` also push a `highlight` event on the WebSocket.
+`give_hint` enforces the hint ladder and may return `ok: false` with an instruction to follow.
+Questions that look like code are rejected.
+
+### `POST /sessions/{sessionId}/interjection`
+Response: `{ "release": null }` or
+`{ "release": { "findingId", "regionId", "line", "tier", "category", "mode": "statement" | "question", "instruction" } }`
+Call when the candidate pauses and every few seconds of silence. If `release` is not null,
+send `"INTERJECT: " + instruction` to the voice session and request a response. At most one
+release at a time; tier 4 (syntax) is never released; `mode: "question"` means low confidence.
+
+### `POST /sessions/{sessionId}/phase`
+Request: `{ "phase": "clarifying" | "writing" | "tracing" | "done" }`
+Edge-case findings (tier 3) are only released during `tracing` or `done`.
+
+### `POST /sessions/{sessionId}/transcript`
+Request: `{ "role": "candidate" | "interviewer", "text": "..." }`. Stored for scoring.
+
 ### `POST /sessions/{sessionId}/end`
 Response: `{ "ok": true }`
 
@@ -59,6 +87,12 @@ Pipeline status:
 ```json
 { "type": "status", "stage": "transcribing" | "analyzing" | "idle" | "error", "detail": "optional text" }
 ```
+
+Highlight, sent when the voice agent points at the board:
+```json
+{ "type": "highlight", "regionId": "code_1", "line": 4 }
+```
+`line` 0 means the whole region. Draw it over the camera view and the editor line.
 
 Board state, sent twice per pass: once as soon as the transcription returns
 (`analysisPending: true`, findings from the previous pass), and again when the analyzer

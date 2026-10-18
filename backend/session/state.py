@@ -25,6 +25,7 @@ class TrackedFinding:
     status: FindingStatus = "new"
     first_seen_pass: int = 0
     last_seen_pass: int = 0
+    released_at: float = 0.0  # monotonic time the policy raised it with the candidate
 
 
 def finding_key(f: Finding) -> tuple:
@@ -58,6 +59,15 @@ class Session:
     analysis_pending: bool = False
     last_pass_at: float = 0.0
     pass_started_at: float = 0.0
+    # --- Voice / policy state (backend/policy.py, backend/voice_tools.py) ---
+    board_stable: bool = False  # latest frame has been still for GATE_STABLE_SECONDS
+    phase: str = "clarifying"  # clarifying | writing | tracing | done, reported by the voice layer
+    last_release_at: float = float("-inf")
+    hint_level_given: int = 0
+    hint_given_at: float = 0.0
+    hint_events: list[dict[str, Any]] = field(default_factory=list)
+    transcript: list[dict[str, Any]] = field(default_factory=list)
+    events: list[dict[str, Any]] = field(default_factory=list)  # interjections, tool calls, hints
     partials_since_full: int = 0  # line-level passes since the last full-board transcription
     need_full: bool = False  # a line re-read failed; next pass must transcribe the whole board
     trigger_reason: str | None = None

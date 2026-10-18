@@ -46,6 +46,13 @@ New lines, new regions, a blank re-read, camera movement, or every FULL_PASS_EVE
 passes fall back to a full-board transcription. Disable with LINE_PATCH=0.
 Backend <-> frontend contract: docs/api.md.
 
+Voice wiring (backend side is built; the Gemini Live client must call it, see docs/api.md):
+- Start: GET /sessions/{id}/voice-config -> system prompt + tool declarations.
+- Tool calls -> POST /sessions/{id}/tools; return its JSON as the tool result.
+- End of candidate turn -> POST /sessions/{id}/sync, send "BOARD: ..." context, then reply.
+- Candidate pause / silence -> POST /sessions/{id}/interjection; if a release comes back,
+  send "INTERJECT: <instruction>" and request a response. Policy: backend/policy.py.
+
 ## Invariants (do not violate)
 - Transcription is LITERAL. Never correct the candidate's code, syntax, or comparisons.
 - The voice agent has no tool that writes code. Allowed tools only:

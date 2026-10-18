@@ -173,3 +173,15 @@ def test_sync_times_out_while_change_is_pending(client):
     start = time.time()
     body = client.post(f"/sessions/{sid}/sync", json={"timeoutSeconds": 0.3}).json()
     assert body["fresh"] is False and time.time() - start >= 0.3
+
+
+def test_voice_endpoints(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    cfg = client.get(f"/sessions/{sid}/voice-config").json()
+    assert "Two Sum" in cfg["systemPrompt"] and {t["name"] for t in cfg["tools"]} == {
+        "ask_question", "point_to_region", "flag_error_type", "give_hint"}
+    assert client.post(f"/sessions/{sid}/interjection").json() == {"release": None}
+    assert client.post(f"/sessions/{sid}/phase", json={"phase": "tracing"}).json()["ok"]
+    assert client.post(f"/sessions/{sid}/phase", json={"phase": "nap"}).status_code == 422
+    assert client.post(f"/sessions/{sid}/tools", json={"name": "give_hint", "args": {"level": 1}}).json()["ok"]
+    assert client.post(f"/sessions/{sid}/transcript", json={"role": "candidate", "text": "hi"}).json()["ok"]

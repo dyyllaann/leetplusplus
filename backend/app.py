@@ -27,6 +27,7 @@ from backend.problems import get_problem, list_problems, problem_text  # noqa: E
 from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
 from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
+from backend import policy, voice_tools  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
@@ -50,6 +51,23 @@ class Trigger(BaseModel):
 
 class Sync(BaseModel):
     timeoutSeconds: float = 2.5
+
+
+class ToolCall(BaseModel):
+    name: str
+    args: dict[str, Any] = {}
+
+
+class PhaseUpdate(BaseModel):
+    phase: str
+
+
+class TranscriptTurn(BaseModel):
+    role: str  # candidate | interviewer
+    text: str
+
+
+INTERVIEWER_PROMPT = (Path(__file__).resolve().parent / "prompts/interviewer.md").read_text()
 
 
 def require(session_id: str) -> Session:
@@ -120,6 +138,44 @@ async def sync(session_id: str, body: Sync) -> dict[str, Any]:
     return {"fresh": session.is_current(), "boardState": session.board_state()}
 
 
+@app.get("/sessions/{session_id}/voice-config")
+def voice_config(session_id: str) -> dict[str, Any]:
+    """System prompt and tool declarations for the voice session."""
+    session = require(session_id)
+    return {"systemPrompt": INTERVIEWER_PROMPT.replace("{problem}", session.problem_text),
+            "tools": voice_tools.TOOL_DECLARATIONS}
+
+
+@app.post("/sessions/{session_id}/tools")
+async def run_tool(session_id: str, body: ToolCall) -> dict[str, Any]:
+    """Execute a voice-agent tool call; return the response to the model as the tool result."""
+    session = require(session_id)
+    return await voice_tools.execute(session, body.name, body.args, lambda e: broadcast(session_id, e))
+
+
+@app.post("/sessions/{session_id}/interjection")
+def interjection(session_id: str) -> dict[str, Any]:
+    """Ask the policy whether to raise a finding now. Call when the candidate pauses
+    (and every few seconds while they are silent). At most one release at a time."""
+    release = policy.next_release(require(session_id), time.monotonic())
+    return {"release": release.as_json() if release else None}
+
+
+@app.post("/sessions/{session_id}/phase")
+def set_phase(session_id: str, body: PhaseUpdate) -> dict[str, Any]:
+    if body.phase not in policy.PHASES:
+        raise HTTPException(422, f"phase must be one of {policy.PHASES}")
+    require(session_id).phase = body.phase
+    return {"ok": True}
+
+
+@app.post("/sessions/{session_id}/transcript")
+def add_transcript(session_id: str, body: TranscriptTurn) -> dict[str, bool]:
+    require(session_id).transcript.append(
+        {"role": body.role, "text": body.text, "at": time.monotonic()})
+    return {"ok": True}
+
+
 @app.post("/sessions/{session_id}/end")
 def end_session(session_id: str) -> dict[str, bool]:
     require(session_id).ended = True
@@ -166,6 +222,7 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
             now = time.monotonic()
             gate = session.gate.update(thumb, now)
             session.pending_change = gate.changed
+            session.board_stable = gate.stable
             await ws.send_json({"type": "gate", "changed": gate.changed,
                                 "stable": gate.stable, "busy": session.busy})
             if gate.ready and not session.busy and session.due(now, config.ANALYSIS_INTERVAL_SECONDS):
