@@ -5,7 +5,7 @@ New, self-contained files (no existing frontend file was changed, so they cannot
 - `app/_components/session/HighlightOverlay.tsx` — draws the voice agent's highlight over the camera.
 - `app/_components/session/EditorTab.tsx` — typed-code editor: Copy from board, Submit/Resubmit, Diff view.
 - `app/_components/session/DiffView.tsx` — line diff between the board snapshot and the typed code.
-- `app/dev/session-ui/page.tsx` — preview with mock data at `/dev/session-ui` (delete when wired in).
+- Wired into `app/problems/[id]` (Editor view in `BoardPanel`, highlight over the camera).
 
 Components live under `app/` because Tailwind only scans `./app/**`.
 

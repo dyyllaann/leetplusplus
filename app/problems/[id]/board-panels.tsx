@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EditorTab } from "@/app/_components/session/EditorTab";
+import { HighlightOverlay } from "@/app/_components/session/HighlightOverlay";
 import type { useCamera } from "@/lib/capture";
-import type { BoardState, GateEvent, Region, StatusEvent } from "@/lib/types";
+import type { BoardState, GateEvent, Region, StatusEvent, Submission } from "@/lib/types";
 
 type Camera = ReturnType<typeof useCamera>;
+/** Line the voice interviewer pointed to (point_to_region / flag_error_type); 0 = whole region. */
+type Highlight = { regionId: string; line: number } | null;
 
 const STAGE_LABEL: Record<StatusEvent["stage"], string> = {
   transcribing: "Reading board…",
@@ -32,6 +36,7 @@ export function CameraPanel({
   status,
   error,
   sessionEnded,
+  highlight = null,
 }: {
   camera: Camera;
   regions: Region[];
@@ -39,6 +44,7 @@ export function CameraPanel({
   status: StatusEvent | null;
   error: string | null;
   sessionEnded: boolean;
+  highlight?: Highlight;
 }) {
   return (
     <section className="flex min-h-0 flex-col" aria-label="Camera feed">
@@ -84,6 +90,7 @@ export function CameraPanel({
                 <span className="absolute -top-5 left-0 bg-emerald-600 px-1 text-[10px] text-white">{region.id}</span>
               </div>
             ))}
+            <HighlightOverlay regions={regions} highlight={highlight && { type: "highlight", ...highlight }} />
           </div>
         )}
       </div>
@@ -99,15 +106,20 @@ export function BoardPanel({
   board,
   problemId,
   highlight = null,
+  sessionId = null,
+  submission = null,
+  onSubmitted,
 }: {
   board: BoardState | null;
   problemId: string;
-  /** Line the voice interviewer pointed to (point_to_region / flag_error_type). */
-  highlight?: { regionId: string; line: number } | null;
+  highlight?: Highlight;
+  sessionId?: string | null;
+  submission?: Submission | null;
+  onSubmitted?: (submission: Submission) => void;
 }) {
   const codeRegions = board?.regions.filter((region) => region.type === "code") ?? [];
   const otherRegions = board?.regions.filter((region) => region.type !== "code") ?? [];
-  const [activeView, setActiveView] = useState<"transcript" | "notes">("transcript");
+  const [activeView, setActiveView] = useState<"transcript" | "notes" | "editor">("transcript");
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(true);
   const notesStorageKey = `leetplusplus:notes:${problemId}`;
@@ -142,8 +154,18 @@ export function BoardPanel({
           >
             Notes
           </button>
+          <button
+            type="button"
+            aria-pressed={activeView === "editor"}
+            onClick={() => setActiveView("editor")}
+            className={`rounded px-2 py-1 text-xs font-semibold ${activeView === "editor" ? "bg-stone-200 text-stone-800" : "text-stone-500 hover:bg-stone-100"}`}
+          >
+            Editor
+          </button>
         </div>
-        {activeView === "transcript" ? (
+        {activeView === "editor" ? (
+          <span className="text-xs text-stone-400">Typed code · not synced with board</span>
+        ) : activeView === "transcript" ? (
           <span className="text-xs text-stone-400">{board ? `Read-only · pass ${board.pass}` : "Read-only"}</span>
         ) : (
           <div className="flex items-center gap-2">
@@ -159,7 +181,10 @@ export function BoardPanel({
           </div>
         )}
       </header>
-      {activeView === "notes" ? (
+      {activeView === "editor" ? (
+        <EditorTab sessionId={sessionId} problemId={problemId} board={board}
+                   submission={submission} onSubmitted={onSubmitted} />
+      ) : activeView === "notes" ? (
         <textarea
           aria-label="Session notes"
           value={notes}

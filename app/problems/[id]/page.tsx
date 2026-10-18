@@ -9,6 +9,7 @@ import { VoiceStrip } from "@/app/problems/[id]/voice-panel";
 import ThemeToggle from "@/app/theme-toggle";
 import { useCamera } from "@/lib/capture";
 import { useBoardSession } from "@/lib/session";
+import { useSessionEvents } from "@/lib/useSessionEvents";
 import { useVoiceSession } from "@/lib/voice";
 
 type Problem = (typeof problems)[number];
@@ -49,6 +50,7 @@ function SessionView({ problem }: { problem: Problem }) {
   const camera = useCamera();
   const boardSession = useBoardSession(problem.id, camera.videoRef);
   const voice = useVoiceSession();
+  const sessionEvents = useSessionEvents(boardSession.sessionId);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [hasSessionStarted, setHasSessionStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -328,6 +330,7 @@ function SessionView({ problem }: { problem: Problem }) {
             status={boardSession.status}
             error={camera.error ?? boardSession.connectionError}
             sessionEnded={hasSessionStarted && !isSessionActive}
+            highlight={voice.highlight}
           />
 
           <div
@@ -343,7 +346,14 @@ function SessionView({ problem }: { problem: Problem }) {
             onKeyDown={(event) => resizeByKeyboard("rows", event)}
           />
 
-          <BoardPanel board={boardSession.board} problemId={problem.id} highlight={voice.highlight} />
+          <BoardPanel
+            board={boardSession.board}
+            problemId={problem.id}
+            highlight={voice.highlight}
+            sessionId={boardSession.sessionId}
+            submission={sessionEvents.submission}
+            onSubmitted={sessionEvents.setSubmission}
+          />
         </div>
       </div>
     </main>
