@@ -193,6 +193,10 @@ class Session:
         original = self.corrected_lines.get((region_id, ln.n))
         state = {"n": ln.n, "text": ln.text, "lowConfidenceChars": ln.low_confidence_chars,
                  "corrected": original is not None}
+        b = getattr(ln, "bbox", None)
+        if b is not None:
+            state["bbox"] = {"x": b.x1 / 1000, "y": b.y1 / 1000,
+                             "width": (b.x2 - b.x1) / 1000, "height": (b.y2 - b.y1) / 1000}
         if original is not None:
             state["transcribedText"] = original
         return state

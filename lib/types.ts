@@ -12,6 +12,8 @@ export interface BoardLine {
   /** True when the analyzer read the image differently from the transcriber. */
   corrected: boolean;
   transcribedText?: string;
+  /** Normalized 0-1 box around this line, when the transcriber provided one. */
+  bbox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface Region {
