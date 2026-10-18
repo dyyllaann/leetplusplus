@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeToggle from "@/app/theme-toggle";
 
 export default function HomePage() {
   return (
@@ -7,7 +8,10 @@ export default function HomePage() {
         <Link href="/" className="text-lg font-bold tracking-tight text-[#17211d]">
           leet<span className="text-emerald-700">++</span>
         </Link>
-        <span className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">Whiteboard practice</span>
+        <div className="flex items-center gap-4">
+          <span className="text-xs font-medium uppercase tracking-[0.16em] text-stone-500">Whiteboard practice</span>
+          <ThemeToggle />
+        </div>
       </header>
       <section className="mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 pb-24">
         <p className="mb-5 text-sm font-semibold uppercase tracking-[0.16em] text-emerald-800">Think it through, out loud</p>

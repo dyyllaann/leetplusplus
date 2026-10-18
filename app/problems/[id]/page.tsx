@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { use, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import problems from "@/data/problems.json";
 import { BoardPanel, CameraPanel } from "@/app/problems/[id]/board-panels";
+import ThemeToggle from "@/app/theme-toggle";
 import { useCamera } from "@/lib/capture";
 import { useBoardSession } from "@/lib/session";
 
@@ -45,7 +46,6 @@ function SessionView({ problem }: { problem: Problem }) {
   const [resizeTarget, setResizeTarget] = useState<ResizeTarget | null>(null);
   const camera = useCamera();
   const boardSession = useBoardSession(problem.id, camera.videoRef);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [hasSessionStarted, setHasSessionStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -137,10 +137,6 @@ function SessionView({ problem }: { problem: Problem }) {
     ? `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
     : `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-  function toggleTheme() {
-    setIsDarkMode((dark) => !dark);
-  }
-
   function startResize(target: ResizeTarget, event: PointerEvent<HTMLDivElement>) {
     setResizeTarget(target);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -169,7 +165,7 @@ function SessionView({ problem }: { problem: Problem }) {
   }
 
   return (
-    <main className="coding-workspace flex h-[100dvh] flex-col overflow-hidden bg-[#f7f8f5]" data-theme={isDarkMode ? "dark" : "light"}>
+    <main className="coding-workspace flex h-[100dvh] flex-col overflow-hidden bg-[#f7f8f5]">
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-stone-200 px-2 sm:px-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" className="shrink-0 text-base font-bold tracking-tight text-[#17211d]">
@@ -178,15 +174,7 @@ function SessionView({ problem }: { problem: Problem }) {
           <span className="truncate border-l border-stone-300 pl-3 text-sm font-medium text-stone-700">{problem.title}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label={`Switch to ${isDarkMode ? "light" : "dark"} mode`}
-            aria-pressed={isDarkMode}
-            onClick={toggleTheme}
-            className="rounded border border-stone-300 px-2 py-1.5 text-xs font-medium text-stone-700 hover:bg-white sm:px-3"
-          >
-            {isDarkMode ? "Light mode" : "Dark mode"}
-          </button>
+          <ThemeToggle />
           {hasSessionStarted && (
             <output className="min-w-12 text-center font-mono text-xs tabular-nums text-stone-700" aria-label="Elapsed session time" aria-live="off">
               {formattedTime}

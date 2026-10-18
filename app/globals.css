@@ -82,76 +82,115 @@ a {
   }
 }
 
-.coding-workspace[data-theme="dark"] {
+html[data-theme="dark"] {
   color-scheme: dark;
   background: #141a16;
   color: #e6eee8;
 }
 
-.coding-workspace[data-theme="dark"] header,
-.coding-workspace[data-theme="dark"] .workspace-prompt,
-.coding-workspace[data-theme="dark"] section,
-.coding-workspace[data-theme="dark"] [class~="border-stone-200"],
-.coding-workspace[data-theme="dark"] [class~="border-stone-300"] {
+html[data-theme="dark"] body,
+html[data-theme="dark"] main {
+  background-color: #141a16;
+  color: #e6eee8;
+}
+
+html[data-theme="dark"] header,
+html[data-theme="dark"] footer,
+html[data-theme="dark"] section,
+html[data-theme="dark"] [class~="border-stone-200"],
+html[data-theme="dark"] [class~="border-stone-300"] {
   border-color: #37443c;
 }
 
-.coding-workspace[data-theme="dark"] .workspace-prompt,
-.coding-workspace[data-theme="dark"] [class~="bg-[#fbfcfa]"],
-.coding-workspace[data-theme="dark"] [class~="bg-white"] {
+html[data-theme="dark"] .workspace-prompt,
+html[data-theme="dark"] [class~="bg-[#fbfcfa]"],
+html[data-theme="dark"] [class~="bg-white"] {
   background-color: #1c2520;
 }
 
-.coding-workspace[data-theme="dark"] .workspace-side,
-.coding-workspace[data-theme="dark"] [class~="bg-[#f7f8f5]"] {
+html[data-theme="dark"] .workspace-side,
+html[data-theme="dark"] [class~="bg-[#f7f8f5]"] {
   background-color: #141a16;
 }
 
-.coding-workspace[data-theme="dark"] [class~="bg-[#e9ece7]"],
-.coding-workspace[data-theme="dark"] [class~="bg-[#dde2dc]"] {
+html[data-theme="dark"] [class~="bg-[#e9ece7]"],
+html[data-theme="dark"] [class~="bg-[#dde2dc]"] {
   background-color: #26312a;
 }
 
-.coding-workspace[data-theme="dark"] [class~="bg-stone-200"] {
+html[data-theme="dark"] [class~="bg-stone-200"] {
   background-color: #344139;
 }
 
-.coding-workspace[data-theme="dark"] [class~="text-[#17211d]"],
-.coding-workspace[data-theme="dark"] [class~="text-stone-700"],
-.coding-workspace[data-theme="dark"] [class~="text-stone-800"] {
+html[data-theme="dark"] [class~="text-[#17211d]"],
+html[data-theme="dark"] [class~="text-stone-700"],
+html[data-theme="dark"] [class~="text-stone-800"] {
   color: #e6eee8;
 }
 
-.coding-workspace[data-theme="dark"] [class~="text-stone-600"],
-.coding-workspace[data-theme="dark"] [class~="text-stone-500"] {
+html[data-theme="dark"] [class~="text-stone-600"],
+html[data-theme="dark"] [class~="text-stone-500"] {
   color: #b2beb5;
 }
 
-.coding-workspace[data-theme="dark"] [class~="text-stone-400"] {
+html[data-theme="dark"] [class~="text-stone-400"] {
   color: #8b9a8f;
 }
 
-.coding-workspace[data-theme="dark"] [class~="text-emerald-700"] {
+html[data-theme="dark"] [class~="text-emerald-700"],
+html[data-theme="dark"] [class~="text-emerald-800"],
+html[data-theme="dark"] [class~="text-emerald-900"] {
   color: #81c99b;
 }
 
-.coding-workspace[data-theme="dark"] .workspace-resizer {
+html[data-theme="dark"] [class~="bg-emerald-50"] {
+  background-color: #203b2c;
+}
+
+html[data-theme="dark"] [class~="text-amber-800"] {
+  color: #f3ca75;
+}
+
+html[data-theme="dark"] [class~="bg-amber-50"] {
+  background-color: #44371f;
+}
+
+html[data-theme="dark"] [class~="text-rose-800"] {
+  color: #f39b9b;
+}
+
+html[data-theme="dark"] [class~="bg-rose-50"] {
+  background-color: #472a2b;
+}
+
+html[data-theme="dark"] [class~="hover:bg-white"]:hover,
+html[data-theme="dark"] [class~="hover:bg-stone-100"]:hover,
+html[data-theme="dark"] [class~="enabled:hover:bg-stone-100"]:enabled:hover,
+html[data-theme="dark"] [class~="hover:bg-white/60"]:hover {
   background-color: #202a24;
 }
 
-.coding-workspace[data-theme="dark"] .workspace-resizer:hover,
-.coding-workspace[data-theme="dark"] .workspace-resizer:focus-visible {
-  background-color: #34483b;
+html[data-theme="dark"] [class~="hover:bg-[#103c2e]"]:hover {
+  background-color: #09291f;
 }
 
-.coding-workspace[data-theme="dark"] .workspace-resizer::after {
+html[data-theme="dark"] .workspace-resizer {
+  background-color: #202a24;
+}
+
+html[data-theme="dark"] .workspace-resizer:hover,
+html[data-theme="dark"] .workspace-resizer:focus-visible {
+  background-color: #18211b;
+}
+
+html[data-theme="dark"] .workspace-resizer::after {
   background-color: #7c9483;
 }
 
-.coding-workspace[data-theme="dark"] textarea {
+html[data-theme="dark"] textarea {
   color: #e6eee8;
 }
 
-.coding-workspace[data-theme="dark"] textarea::placeholder {
+html[data-theme="dark"] textarea::placeholder {
   color: #8b9a8f;
 }

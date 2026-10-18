@@ -1,5 +1,6 @@
 import Link from "next/link";
 import problems from "@/data/problems.json";
+import ThemeToggle from "@/app/theme-toggle";
 
 const difficultyStyle: Record<string, string> = {
   Easy: "text-emerald-800 bg-emerald-50",
@@ -15,7 +16,10 @@ export default function ProblemsPage() {
           <Link href="/" className="text-lg font-bold tracking-tight text-[#17211d]">
             leet<span className="text-emerald-700">++</span>
           </Link>
-          <span className="text-sm text-stone-500">Practice set</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-stone-500">Practice set</span>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
       <section className="mx-auto max-w-6xl px-6 py-12">
