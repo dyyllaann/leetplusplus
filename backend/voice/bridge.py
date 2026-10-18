@@ -109,9 +109,8 @@ class VoiceBridge:
             await self._send_json({"type": "voiceStatus", "state": "connected",
                                    "pushToTalk": self.push_to_talk})
             await self._sync_board(live)
-            await self._prompt_response(live, "[COACH] The candidate just joined. Do your opening now: "
-                                              "introduce yourself, present the problem, and ask if they have "
-                                              "any questions before they start.")
+            await self._prompt_response(live, "[COACH] The candidate just joined. Do step 1 of your "
+                                              "opening now.")
             tasks = [asyncio.create_task(c) for c in
                      (self._from_browser(live), self._from_gemini(live), self._tick(live))]
             try:
