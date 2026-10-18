@@ -26,6 +26,7 @@ from backend.pipeline import run_pass  # noqa: E402
 from backend.problems import get_problem, list_problems, problem_text  # noqa: E402
 from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
+from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
@@ -125,10 +126,10 @@ def end_session(session_id: str) -> dict[str, bool]:
     return {"ok": True}
 
 
-async def _pass_task(session: Session, image: bytes, mime: str) -> None:
+async def _pass_task(session: Session, image: bytes, mime: str, plan: PassPlan) -> None:
     ok = False
     try:
-        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e))
+        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e), plan)
     except Exception as exc:
         await broadcast(session.id, {"type": "status", "stage": "error", "detail": repr(exc)})
     finally:
@@ -168,12 +169,15 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
             await ws.send_json({"type": "gate", "changed": gate.changed,
                                 "stable": gate.stable, "busy": session.busy})
             if gate.ready and not session.busy and session.due(now, config.ANALYSIS_INTERVAL_SECONDS):
+                plan = (PassPlan(True, "previous line re-read failed") if session.need_full
+                        else plan_pass(session.gate.changed_mask(thumb), session.raw_transcription,
+                                       session.partials_since_full))
                 session.busy = True
                 session.transcribing = True
                 session.pending_change = False
                 session.pass_started_at = now
                 session.gate.mark_analyzed(thumb)
-                asyncio.create_task(_pass_task(session, image, mime))
+                asyncio.create_task(_pass_task(session, image, mime, plan))
     except WebSocketDisconnect:
         pass
     finally:

@@ -58,6 +58,8 @@ class Session:
     analysis_pending: bool = False
     last_pass_at: float = 0.0
     pass_started_at: float = 0.0
+    partials_since_full: int = 0  # line-level passes since the last full-board transcription
+    need_full: bool = False  # a line re-read failed; next pass must transcribe the whole board
     trigger_reason: str | None = None
     updated_at: str | None = None
     ended: bool = False

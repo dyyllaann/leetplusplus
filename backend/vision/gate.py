@@ -51,6 +51,12 @@ class FrameGate:
                    or changed_fraction(thumb, self._last_analyzed) > config.GATE_CHANGED_FRACTION)
         return GateResult(changed=changed, stable=stable)
 
+    def changed_mask(self, thumb: np.ndarray) -> np.ndarray | None:
+        """Pixels that differ from the last analyzed frame, or None if there is none."""
+        if self._last_analyzed is None:
+            return None
+        return np.abs(thumb - self._last_analyzed) > config.GATE_PIXEL_DELTA
+
     def mark_analyzed(self, thumb: np.ndarray) -> None:
         self._last_analyzed = thumb
 

@@ -5,8 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from backend.models import perceptron_client
-from backend.models.prompts import TRANSCRIBE_SYSTEM, TRANSCRIBE_USER
-from backend.models.schemas import ModelCall, Transcription
+from backend.models.prompts import LINE_SYSTEM, LINE_USER, TRANSCRIBE_SYSTEM, TRANSCRIBE_USER
+from backend.models.schemas import LineReading, ModelCall, Transcription
 
 
 class Transcriber(ABC):
@@ -15,6 +15,10 @@ class Transcriber(ABC):
     @abstractmethod
     def transcribe(self, image: bytes, mime: str) -> ModelCall[Transcription]:
         """Literal transcription of every region on the board."""
+
+    @abstractmethod
+    def transcribe_line(self, image: bytes, mime: str) -> ModelCall[LineReading]:
+        """Literal transcription of one cropped line."""
 
 
 class PerceptronTranscriber(Transcriber):
@@ -37,6 +41,19 @@ class PerceptronTranscriber(Transcriber):
             reasoning_effort=self.reasoning_effort,
             # A full board is ~500 tokens; a low cap stops runaway repetition fast.
             max_completion_tokens=2048,
+        )
+
+    def transcribe_line(self, image: bytes, mime: str) -> ModelCall[LineReading]:
+        return perceptron_client.structured_completion(
+            system=LINE_SYSTEM,
+            user_text=LINE_USER,
+            image=image,
+            mime=mime,
+            schema_model=LineReading,
+            schema_name="line_reading",
+            model=self.model,
+            reasoning_effort=self.reasoning_effort,
+            max_completion_tokens=256,
         )
 
 

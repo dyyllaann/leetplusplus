@@ -29,6 +29,17 @@ class Line(_Strict):
     low_confidence_chars: list[int] = Field(
         description="0-based indices into text of characters that are hard to read"
     )
+    # Used to re-read only the lines that changed (backend/vision/localize.py).
+    bbox: BBox | None = Field(default=None, description="Box around this written line")
+
+
+class LineReading(_Strict):
+    """Output of a single-line re-read from a cropped image."""
+
+    text: str = Field(description="Exact characters as written, errors included; empty if blank")
+    low_confidence_chars: list[int] = Field(
+        description="0-based indices into text of characters that are hard to read"
+    )
 
 
 class Region(_Strict):
@@ -100,7 +111,11 @@ def inline_json_schema(model: type[BaseModel]) -> dict[str, Any]:
         if isinstance(node, dict):
             if "$ref" in node:
                 return resolve(defs[node["$ref"].split("/")[-1]])
-            return {k: resolve(v) for k, v in node.items() if k != "title"}
+            out = {k: resolve(v) for k, v in node.items() if k not in ("title", "default")}
+            if out.get("type") == "object" and "properties" in out:
+                # Strict modes require every property listed; optional ones are nullable.
+                out["required"] = list(out["properties"])
+            return out
         if isinstance(node, list):
             return [resolve(v) for v in node]
         return node

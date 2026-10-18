@@ -38,6 +38,12 @@ Perceptron transcribes the full frame (low reasoning) into region JSON, then the
 that JSON plus the frame image (the image catches Perceptron's occasional "corrections").
 Regions still come from the transcription output. Camera should be on a fixed tripod.
 Manual 4-click flattening is the first thing to add back if time allows.
+
+Line-level updates (backend/vision/localize.py): full transcriptions return a bbox per line.
+When the gate's change mask falls on at most LINE_PATCH_MAX_LINES known lines, only those
+lines are cropped and re-read (Perceptron, single-line schema) and patched into the JSON.
+New lines, new regions, a blank re-read, camera movement, or every FULL_PASS_EVERY partial
+passes fall back to a full-board transcription. Disable with LINE_PATCH=0.
 Backend <-> frontend contract: docs/api.md.
 
 ## Invariants (do not violate)
