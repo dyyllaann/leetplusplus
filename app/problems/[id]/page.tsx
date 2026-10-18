@@ -4,6 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { use, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import problems from "@/data/problems.json";
+import { BoardPanel, CameraPanel } from "@/app/problems/[id]/board-panels";
+import { useCamera } from "@/lib/capture";
+import { useBoardSession } from "@/lib/session";
 
 type Problem = (typeof problems)[number];
 
@@ -19,7 +22,8 @@ function SessionView({ problem }: { problem: Problem }) {
   const [promptWidth, setPromptWidth] = useState(62);
   const [videoHeight, setVideoHeight] = useState(54);
   const [resizeTarget, setResizeTarget] = useState<ResizeTarget | null>(null);
-  const [transcript, setTranscript] = useState("");
+  const camera = useCamera();
+  const boardSession = useBoardSession(problem.id, camera.videoRef);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [hasSessionStarted, setHasSessionStarted] = useState(false);
@@ -38,18 +42,26 @@ function SessionView({ problem }: { problem: Problem }) {
     return () => window.clearInterval(timer);
   }, [isSessionActive]);
 
-  function beginSession() {
+  async function beginSession() {
+    try {
+      await camera.start();
+    } catch {
+      return; // camera.error is shown in the camera panel
+    }
     sessionStartedAt.current = Date.now();
     setElapsedSeconds(0);
     setHasSessionStarted(true);
     setIsSessionActive(true);
+    await boardSession.start();
   }
 
-  function endSession() {
+  async function endSession() {
     if (sessionStartedAt.current !== null) {
       setElapsedSeconds(Math.floor((Date.now() - sessionStartedAt.current) / 1000));
     }
     setIsSessionActive(false);
+    await boardSession.stop();
+    camera.stop();
   }
 
   const hours = Math.floor(elapsedSeconds / 3600);
@@ -188,17 +200,13 @@ function SessionView({ problem }: { problem: Problem }) {
           className="workspace-side min-h-0 bg-white"
           style={{ "--video-ratio": `${videoHeight}fr`, "--editor-ratio": `${100 - videoHeight}fr` } as React.CSSProperties}
         >
-          <section className="flex min-h-0 flex-col" aria-label="Camera feed">
-            <header className="flex h-10 shrink-0 items-center justify-between border-b border-stone-200 px-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-600">Camera feed</h2>
-              <span className="text-xs text-stone-400">Preview</span>
-            </header>
-            <div className="flex min-h-0 flex-1 items-center justify-center bg-[#e9ece7] p-3">
-              <div className="flex aspect-video w-full items-center justify-center border border-stone-300 bg-[#dde2dc] text-sm font-medium text-stone-500">
-                Camera feed
-              </div>
-            </div>
-          </section>
+          <CameraPanel
+            camera={camera}
+            regions={boardSession.board?.regions ?? []}
+            gate={boardSession.gate}
+            status={boardSession.status}
+            error={camera.error ?? boardSession.connectionError}
+          />
 
           <div
             role="separator"
@@ -213,19 +221,7 @@ function SessionView({ problem }: { problem: Problem }) {
             onKeyDown={(event) => resizeByKeyboard("rows", event)}
           />
 
-          <section className="flex min-h-[240px] flex-col border-t border-stone-200 lg:min-h-0" aria-label="Board transcript editor">
-            <header className="flex h-10 shrink-0 items-center justify-between border-b border-stone-200 px-4">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-stone-600">Board transcript</h2>
-              <span className="text-xs text-stone-400">Corrections only</span>
-            </header>
-            <textarea
-              aria-label="Board transcript corrections"
-              value={transcript}
-              onChange={(event) => setTranscript(event.target.value)}
-              placeholder="Transcribed whiteboard text will appear here. Corrections only."
-              className="min-h-[200px] flex-1 resize-none bg-[#fbfcfa] p-4 font-mono text-sm leading-6 text-stone-800 outline-none placeholder:text-stone-400 focus:bg-white lg:min-h-0"
-            />
-          </section>
+          <BoardPanel board={boardSession.board} />
         </div>
       </div>
     </main>

@@ -8,3 +8,6 @@ logs/**
 node_modules
 .next/
 *.tsbuildinfo
+.next/
+node_modules/
+*.tsbuildinfo
