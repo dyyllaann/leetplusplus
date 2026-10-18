@@ -26,14 +26,51 @@ class TrackedFinding:
     first_seen_pass: int = 0
     last_seen_pass: int = 0
     released_at: float = 0.0  # monotonic time the policy raised it with the candidate
+    line_text: str | None = None  # normalized text of the line when last reported
+
+
+def normalize_line(text: str) -> str:
+    return " ".join(text.split())
+
+
+def line_text(t: Transcription | None, region_id: str, line: int) -> str | None:
+    if t is None or not line:
+        return None
+    for r in t.regions:
+        if r.id == region_id:
+            for ln in r.lines:
+                if ln.n == line:
+                    return normalize_line(ln.text)
+    return None
 
 
 def finding_key(f: Finding) -> tuple:
-    """Identity of an issue across passes. Category wording drifts between
-    model calls, so line-specific findings are keyed by location and tier."""
+    """Duplicate check within ONE pass: one finding per line and tier (category wording
+    drifts between model calls). Matching ACROSS passes is done by match_open."""
     if f.line:
-        return (f.region_id, f.line, f.tier)
-    return (f.region_id, 0, f.tier, f.category.strip().lower())
+        return (f.region_id, f.tier, f.line)
+    return (f.region_id, f.tier, 0, f.category.strip().lower())
+
+
+def match_open(open_findings: list[TrackedFinding], f: Finding, text: str | None,
+               taken: set[str], by_text: bool) -> TrackedFinding | None:
+    """Find the tracked finding this new report continues. Called in two rounds so text
+    matches win over number matches across the whole pass:
+    by_text=True:  same region, tier, and line text (the line moved because lines were
+                   inserted or removed); ties (e.g. several "}") go to the closest number.
+    by_text=False: same region, tier, and line number (the line was edited in place).
+    Region-level findings (line 0) match on category in the first round."""
+    pool = [t for t in open_findings if t.id not in taken
+            and t.finding.region_id == f.region_id and t.finding.tier == f.tier]
+    if not f.line:
+        if not by_text:
+            return None
+        return next((t for t in pool if not t.finding.line and
+                     t.finding.category.strip().lower() == f.category.strip().lower()), None)
+    if by_text:
+        same_text = [t for t in pool if t.finding.line and text and t.line_text == text]
+        return min(same_text, key=lambda t: abs(t.finding.line - f.line)) if same_text else None
+    return next((t for t in pool if t.finding.line == f.line), None)
 
 
 @dataclass
@@ -115,23 +152,40 @@ class Session:
         self.corrected_lines = corrected_lines or {}
         self.history = (self.history + [transcription])[-HISTORY_LIMIT:]
 
-        open_by_key = {finding_key(t.finding): t for t in self.findings if t.status != "resolved"}
-        seen = set()
+        open_findings = [t for t in self.findings if t.status != "resolved"]
+        reports: list[tuple[Finding, str | None]] = []
+        seen_keys: set[tuple] = set()
         for f in findings:
             key = finding_key(f)
-            if key in seen:
-                continue
-            seen.add(key)
-            if key in open_by_key:
-                tracked = open_by_key[key]
+            if key not in seen_keys:
+                seen_keys.add(key)
+                reports.append((f, line_text(transcription, f.region_id, f.line)))
+
+        taken: set[str] = set()
+        matched: dict[int, TrackedFinding] = {}
+        for by_text in (True, False):
+            for i, (f, text) in enumerate(reports):
+                if i in matched:
+                    continue
+                tracked = match_open(open_findings, f, text, taken, by_text)
+                if tracked is not None:
+                    matched[i] = tracked
+                    taken.add(tracked.id)
+
+        for i, (f, text) in enumerate(reports):
+            tracked = matched.get(i)
+            if tracked is not None:
+                # Same issue: keep id and status (so a released issue is not raised again),
+                # follow it to its current line number and wording.
                 tracked.finding = f
+                tracked.line_text = text
                 tracked.last_seen_pass = self.pass_count
             else:
                 self.findings.append(TrackedFinding(
-                    id=f"f{next(self._ids)}", finding=f,
+                    id=f"f{next(self._ids)}", finding=f, line_text=text,
                     first_seen_pass=self.pass_count, last_seen_pass=self.pass_count))
-        for key, tracked in open_by_key.items():
-            if key not in seen:
+        for tracked in open_findings:
+            if tracked.id not in taken:
                 tracked.status = "resolved"
 
     def _line_state(self, region_id: str, ln: Any) -> dict[str, Any]:

@@ -55,3 +55,54 @@ def test_is_current_requires_no_transcription_in_flight_and_no_pending_change():
     assert not s.is_current()
     s.pending_change, s.transcribing = False, True
     assert not s.is_current()
+
+
+def board(*lines):
+    return Transcription.model_validate({"regions": [{
+        "id": "code_1", "type": "code", "bbox": {"x1": 0, "y1": 0, "x2": 500, "y2": 500},
+        "lines": [{"n": i, "text": t, "low_confidence_chars": []} for i, t in enumerate(lines, 1)]}]})
+
+
+def test_finding_follows_its_line_when_a_line_is_inserted_above():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(board("def f(a):", "for x in a:", "if x < 0:"), [f(3)])
+    s.findings[0].status = "released"
+    s.apply_pass(board("def f(a):", "seen = set()", "for x in a:", "if x < 0:"), [f(4)])
+    assert len(s.findings) == 1
+    t = s.findings[0]
+    assert (t.id, t.status, t.finding.line) == ("f1", "released", 4)
+
+
+def test_finding_kept_when_its_line_is_edited_in_place():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(board("a", "b", "if x < 0:"), [f(3)])
+    s.findings[0].status = "released"
+    s.apply_pass(board("a", "b", "if x < 0 or y:"), [f(3)])
+    assert [(t.id, t.status) for t in s.findings] == [("f1", "released")]
+
+
+def test_duplicate_line_text_matches_the_closest_line():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(board("}", "x", "}"), [f(1), f(3)])
+    s.findings[1].status = "released"  # the finding on line 3
+    s.apply_pass(board("new", "}", "x", "}"), [f(2), f(4)])
+    by_line = {t.finding.line: (t.id, t.status) for t in s.findings}
+    assert by_line == {2: ("f1", "new"), 4: ("f2", "released")}
+
+
+def test_fixed_line_resolves_and_a_different_line_is_new():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(board("a", "if x < 0:"), [f(2)])
+    s.apply_pass(board("a", "if x <= 0:", "return y"), [f(3)])
+    assert [(t.id, t.status, t.finding.line) for t in s.findings] == [
+        ("f1", "resolved", 2), ("f2", "new", 3)]
+
+
+def test_new_issue_on_inserted_line_does_not_steal_the_moved_finding():
+    s = Session(id="s", problem_id="p", problem_text="")
+    s.apply_pass(board("a", "b", "if x < 0:"), [f(3)])
+    s.findings[0].status = "released"
+    # A new line 3 with its own issue is listed first; the old issue moved to line 4.
+    s.apply_pass(board("a", "b", "y = z[0]", "if x < 0:"), [f(3), f(4)])
+    by_line = {t.finding.line: (t.id, t.status) for t in s.findings}
+    assert by_line == {3: ("f2", "new"), 4: ("f1", "released")}
