@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import io
 from collections.abc import Awaitable, Callable
 from typing import Any
+
+from PIL import Image
 
 from backend import config
 from backend.models.analyzer import Analyzer, get_analyzer
@@ -12,6 +15,7 @@ from backend.models.call_log import save_call
 from backend.models.transcriber import Transcriber, get_transcriber
 from backend.models.schemas import BBox, Correction, Line, Region, RegionRewrite, Transcription
 from backend.session.state import Session
+from backend.vision.localize import PassPlan
 from backend.vision.occlusion import only_lost_text
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
@@ -84,12 +88,72 @@ def apply_corrections(t: Transcription, corrections: list[Correction],
     return Transcription(regions=regions), originals
 
 
+MIN_LINE_CROP_HEIGHT = 160  # px; small crops are upscaled so handwriting stays legible
+
+
+def crop_lines(image: bytes, plan: PassPlan) -> list[bytes]:
+    """JPEG crops for each planned line, from the full-resolution frame."""
+    crops = []
+    with Image.open(io.BytesIO(image)) as im:
+        im = im.convert("RGB")
+        w, h = im.size
+        for t in plan.lines:
+            box = (t.crop.x1 * w // 1000, t.crop.y1 * h // 1000,
+                   max(t.crop.x2 * w // 1000, t.crop.x1 * w // 1000 + 1),
+                   max(t.crop.y2 * h // 1000, t.crop.y1 * h // 1000 + 1))
+            crop = im.crop(box)
+            if crop.height < MIN_LINE_CROP_HEIGHT:
+                scale = MIN_LINE_CROP_HEIGHT / crop.height
+                crop = crop.resize((round(crop.width * scale), MIN_LINE_CROP_HEIGHT), Image.LANCZOS)
+            buf = io.BytesIO()
+            crop.save(buf, "JPEG", quality=90)
+            crops.append(buf.getvalue())
+    return crops
+
+
+async def read_changed_lines(session: Session, transcriber: Transcriber, image: bytes,
+                             plan: PassPlan, n: int) -> Transcription | None:
+    """Re-read only the planned lines and patch them into the last raw transcription.
+    Returns None if any read fails or a line came back blank (structure changed)."""
+    base = session.raw_transcription
+    if base is None:
+        return None
+    crops = crop_lines(image, plan)
+    calls = await asyncio.gather(*(asyncio.to_thread(transcriber.transcribe_line, c, "image/jpeg")
+                                   for c in crops))
+    patches = {}
+    for i, (target, call) in enumerate(zip(plan.lines, calls)):
+        save_call(session.log_dir, f"{n:03d}_line{i}_{target.region_id}_{target.n}", call)
+        if call.parsed is None or not call.parsed.text.strip():
+            return None
+        patches[(target.region_id, target.n)] = (call.parsed, target)
+
+    regions = []
+    for r in base.regions:
+        lines = []
+        for ln in r.lines:
+            hit = patches.get((r.id, ln.n))
+            if hit:
+                reading, target = hit
+                bbox = ln.bbox.model_copy(update={"x1": min(ln.bbox.x1, target.crop.x1 + 20),
+                                                  "x2": max(ln.bbox.x2, target.crop.x2 - 20)}) \
+                    if ln.bbox else None
+                ln = ln.model_copy(update={"text": reading.text,
+                                           "low_confidence_chars": reading.low_confidence_chars,
+                                           "bbox": bbox})
+            lines.append(ln)
+        regions.append(r.model_copy(update={"lines": lines}))
+    return Transcription(regions=regions)
+
+
 def board_text(t: Transcription | None) -> list[tuple[str, list[str]]]:
     return [(r.id, [ln.text.strip() for ln in r.lines]) for r in t.regions] if t else []
 
 
-async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> bool:
+async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
+                   plan: PassPlan | None = None) -> bool:
     """Returns True if the pass completed and session state was updated."""
+    plan = plan or PassPlan(True, "default")
     transcriber, analyzer = models()
     session.attempts += 1
     n = session.attempts
@@ -97,14 +161,30 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
     ext = mime.split("/")[-1].replace("jpeg", "jpg")
     (session.log_dir / f"{n:03d}_frame.{ext}").write_bytes(image)
 
-    await emit({"type": "status", "stage": "transcribing"})
-    t_call = await asyncio.to_thread(transcriber.transcribe, image, mime)
-    save_call(session.log_dir, f"{n:03d}_transcription", t_call)
-    if t_call.parsed is None:
-        await emit({"type": "status", "stage": "error", "detail": f"transcription: {t_call.error}"})
-        return False
-
-    transcription = normalize_region_ids(t_call.parsed)
+    started = asyncio.get_running_loop().time()
+    if plan.full:
+        await emit({"type": "status", "stage": "transcribing", "detail": f"full board ({plan.reason})"})
+        t_call = await asyncio.to_thread(transcriber.transcribe, image, mime)
+        session.transcribing = False
+        save_call(session.log_dir, f"{n:03d}_transcription", t_call)
+        if t_call.parsed is None:
+            await emit({"type": "status", "stage": "error", "detail": f"transcription: {t_call.error}"})
+            return False
+        transcription = normalize_region_ids(t_call.parsed)
+        session.partials_since_full = 0
+        session.need_full = False
+    else:
+        await emit({"type": "status", "stage": "transcribing", "detail": plan.reason})
+        patched = await read_changed_lines(session, transcriber, image, plan, n)
+        session.transcribing = False
+        if patched is None:
+            # A failed or blank line read usually means lines were added or erased.
+            session.need_full = True
+            await emit({"type": "status", "stage": "idle", "detail": "line re-read failed; full pass next"})
+            return False
+        transcription = patched
+        session.partials_since_full += 1
+    t_seconds = asyncio.get_running_loop().time() - started
     if only_lost_text(session.raw_transcription, transcription):
         # Something is blocking the board: keep the last good reading until an actual change.
         session.mark_unchanged_pass()
@@ -116,16 +196,25 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         await emit({"type": "status", "stage": "idle", "detail": "board text unchanged"})
         return True
 
-    await emit({"type": "status", "stage": "analyzing"})
+    # Publish the new text now; the analyzer (the slower call) runs afterwards.
+    session.apply_transcription(transcription)
+    await emit(session.board_state())
+    await emit({"type": "status", "stage": "analyzing",
+                "detail": f"transcribed in {t_seconds:.1f}s"})
     a_call = await asyncio.to_thread(analyzer.analyze, image, mime, transcription, session.problem_text)
     save_call(session.log_dir, f"{n:03d}_analysis", a_call)
     if a_call.parsed is None:
+        session.analysis_pending = False
         await emit({"type": "status", "stage": "error", "detail": f"analysis: {a_call.error}"})
+        # The transcription is already published; returning False retries the
+        # analysis on the next stable frame.
         return False
 
     corrected, originals = apply_corrections(transcription, a_call.parsed.transcription_corrections,
                                              a_call.parsed.region_rewrites)
     session.apply_pass(corrected, a_call.parsed.findings, raw=transcription, corrected_lines=originals)
     await emit(session.board_state())
-    await emit({"type": "status", "stage": "idle"})
+    await emit({"type": "status", "stage": "idle",
+                "detail": f"transcribed {t_seconds:.1f}s ({'full' if plan.full else 'lines'}), "
+                          f"analyzed {a_call.latency_s:.1f}s"})
     return True

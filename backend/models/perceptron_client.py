@@ -22,6 +22,16 @@ DEFAULT_MODEL = "perceptron-mk1.5"
 
 T = TypeVar("T", bound=BaseModel)
 
+# One shared client keeps the TLS connection open between calls (saves a handshake per pass).
+_http: httpx.Client | None = None
+
+
+def http() -> httpx.Client:
+    global _http
+    if _http is None:
+        _http = httpx.Client(timeout=180.0)
+    return _http
+
 
 def data_url(image: bytes, mime: str) -> str:
     return f"data:{mime};base64,{base64.b64encode(image).decode()}"
@@ -88,8 +98,8 @@ def structured_completion(
     headers = {"Authorization": f"Bearer {os.environ['PERCEPTRON_API_KEY']}"}
     start = time.perf_counter()
     try:
-        resp = httpx.post(f"{BASE_URL}/chat/completions", json=payload,
-                          headers=headers, timeout=timeout_s)
+        resp = http().post(f"{BASE_URL}/chat/completions", json=payload,
+                           headers=headers, timeout=timeout_s)
         call.latency_s = time.perf_counter() - start
         call.response = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else resp.text
         resp.raise_for_status()

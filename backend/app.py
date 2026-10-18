@@ -28,6 +28,9 @@ from backend.problems import get_problem, list_problems, problem_text  # noqa: E
 from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
 from backend.voice.bridge import VoiceBridge  # noqa: E402
+from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
+from backend import policy, voice_tools  # noqa: E402
+from backend.submission import Submission, line_diff, submit as make_submission  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
@@ -47,6 +50,32 @@ class CreateSession(BaseModel):
 
 class Trigger(BaseModel):
     reason: str = "manual"
+
+
+class Sync(BaseModel):
+    timeoutSeconds: float = 2.5
+
+
+class ToolCall(BaseModel):
+    name: str
+    args: dict[str, Any] = {}
+
+
+class SubmitCode(BaseModel):
+    code: str
+    language: str | None = None
+
+
+class PhaseUpdate(BaseModel):
+    phase: str
+
+
+class TranscriptTurn(BaseModel):
+    role: str  # candidate | interviewer
+    text: str
+
+
+INTERVIEWER_PROMPT = (Path(__file__).resolve().parent / "prompts/interviewer.md").read_text()
 
 
 def require(session_id: str) -> Session:
@@ -104,16 +133,96 @@ def trigger(session_id: str, body: Trigger) -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.post("/sessions/{session_id}/sync")
+async def sync(session_id: str, body: Sync) -> dict[str, Any]:
+    """Wait until the transcription reflects the current board, up to timeoutSeconds.
+    Call this before the voice agent answers anything about the board."""
+    session = require(session_id)
+    if session.pending_change:
+        session.trigger_reason = "sync"  # skip the analysis interval
+    deadline = time.monotonic() + max(0.0, min(body.timeoutSeconds, 10.0))
+    while not session.is_current() and time.monotonic() < deadline:
+        await asyncio.sleep(0.1)
+    return {"fresh": session.is_current(), "boardState": session.board_state()}
+
+
+@app.get("/sessions/{session_id}/voice-config")
+def voice_config(session_id: str) -> dict[str, Any]:
+    """System prompt and tool declarations for the voice session."""
+    session = require(session_id)
+    return {"systemPrompt": INTERVIEWER_PROMPT.replace("{problem}", session.problem_text),
+            "tools": voice_tools.TOOL_DECLARATIONS,
+            "voiceName": config.VOICE_NAME}
+
+
+@app.post("/sessions/{session_id}/tools")
+async def run_tool(session_id: str, body: ToolCall) -> dict[str, Any]:
+    """Execute a voice-agent tool call; return the response to the model as the tool result."""
+    session = require(session_id)
+    return await voice_tools.execute(session, body.name, body.args, lambda e: broadcast(session_id, e))
+
+
+@app.post("/sessions/{session_id}/interjection")
+def interjection(session_id: str) -> dict[str, Any]:
+    """Ask the policy whether to raise a finding now. Call when the candidate pauses
+    (and every few seconds while they are silent). At most one release at a time."""
+    release = policy.next_release(require(session_id), time.monotonic())
+    return {"release": release.as_json() if release else None}
+
+
+@app.post("/sessions/{session_id}/phase")
+def set_phase(session_id: str, body: PhaseUpdate) -> dict[str, Any]:
+    if body.phase not in policy.PHASES:
+        raise HTTPException(422, f"phase must be one of {policy.PHASES}")
+    require(session_id).phase = body.phase
+    return {"ok": True}
+
+
+@app.post("/sessions/{session_id}/transcript")
+def add_transcript(session_id: str, body: TranscriptTurn) -> dict[str, bool]:
+    require(session_id).transcript.append(
+        {"role": body.role, "text": body.text, "at": time.monotonic()})
+    return {"ok": True}
+
+
+@app.post("/sessions/{session_id}/submit")
+async def submit_code(session_id: str, body: SubmitCode) -> dict[str, Any]:
+    """Submit the typed code, which takes priority over the board. The first submit takes
+    a board snapshot; later submits replace only the typed code and re-diff, so the typed
+    code stays editable."""
+    session = require(session_id)
+    if session.submission is None:
+        sub = make_submission(session.transcription, body.code, body.language)
+    else:
+        prev: Submission = session.submission
+        sub = make_submission(None, body.code, body.language)
+        sub.board_snapshot = prev.board_snapshot
+        sub.diff = line_diff(prev.board_snapshot, sub.typed_code)
+    session.submission = sub
+    session.phase = "done"
+    event = sub.as_json()
+    await broadcast(session_id, event)
+    return event
+
+
+@app.get("/sessions/{session_id}/submission")
+def get_submission(session_id: str) -> dict[str, Any]:
+    session = require(session_id)
+    if session.submission is None:
+        raise HTTPException(404, "not submitted")
+    return session.submission.as_json()
+
+
 @app.post("/sessions/{session_id}/end")
 def end_session(session_id: str) -> dict[str, bool]:
     require(session_id).ended = True
     return {"ok": True}
 
 
-async def _pass_task(session: Session, image: bytes, mime: str) -> None:
+async def _pass_task(session: Session, image: bytes, mime: str, plan: PassPlan) -> None:
     ok = False
     try:
-        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e))
+        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e), plan)
     except Exception as exc:
         await broadcast(session.id, {"type": "status", "stage": "error", "detail": repr(exc)})
     finally:
@@ -121,6 +230,7 @@ async def _pass_task(session: Session, image: bytes, mime: str) -> None:
         session.last_pass_at = time.monotonic()
         if not ok:
             session.gate.reset_analyzed()
+        session.transcribing = False
         session.busy = False
 
 
@@ -137,7 +247,8 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
     try:
         while True:
             msg = await ws.receive_json()
-            if msg.get("type") != "frame" or session.ended:
+            # After the first submit the board snapshot is fixed: the camera stops updating it.
+            if msg.get("type") != "frame" or session.ended or session.submission is not None:
                 continue
             try:
                 image, mime = decode_data_url(msg["imageData"])
@@ -148,12 +259,20 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
 
             now = time.monotonic()
             gate = session.gate.update(thumb, now)
+            session.pending_change = gate.changed
+            session.board_stable = gate.stable
             await ws.send_json({"type": "gate", "changed": gate.changed,
                                 "stable": gate.stable, "busy": session.busy})
             if gate.ready and not session.busy and session.due(now, config.ANALYSIS_INTERVAL_SECONDS):
+                plan = (PassPlan(True, "previous line re-read failed") if session.need_full
+                        else plan_pass(session.gate.changed_mask(thumb), session.raw_transcription,
+                                       session.partials_since_full))
                 session.busy = True
+                session.transcribing = True
+                session.pending_change = False
+                session.pass_started_at = now
                 session.gate.mark_analyzed(thumb)
-                asyncio.create_task(_pass_task(session, image, mime))
+                asyncio.create_task(_pass_task(session, image, mime, plan))
     except WebSocketDisconnect:
         pass
     finally:

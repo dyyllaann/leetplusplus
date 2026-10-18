@@ -23,7 +23,28 @@ Rules:
 - Ignore people, hands, and anything that is not writing on the board.
 """
 
+# With line-level updates on, every line also needs its own box.
+TRANSCRIBE_SYSTEM_LINE_BOXES = TRANSCRIBE_SYSTEM.replace(
+    "- bbox uses a 0-1000 normalized grid, origin top-left.\n",
+    "- bbox uses a 0-1000 normalized grid, origin top-left. Give every region a bbox and\n"
+    "  every line its own tight bbox around that line's writing.\n")
+
 TRANSCRIBE_USER = "Transcribe the whiteboard literally into the JSON schema."
+
+LINE_SYSTEM = """\
+You are a literal transcription engine for one line of handwriting on a whiteboard.
+The image is a crop centered on a single written line; the edges of the lines above and
+below may be visible. Transcribe ONLY the line in the vertical middle of the image.
+
+Rules:
+- Copy characters EXACTLY as written. Do not fix syntax, method names, operators,
+  comparisons, spelling, or missing punctuation. Bugs must survive.
+- Keep leading indentation as spaces if the line is visibly indented.
+- If the middle line has been erased or is blank, return an empty string.
+- List the 0-based index of any character you are unsure of in low_confidence_chars.
+"""
+
+LINE_USER = "Transcribe the middle line literally into the JSON schema."
 
 ANALYZE_SYSTEM = """\
 You review a candidate's whiteboard code during a mock technical interview.

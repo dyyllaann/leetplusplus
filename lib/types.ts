@@ -12,6 +12,8 @@ export interface BoardLine {
   /** True when the analyzer read the image differently from the transcriber. */
   corrected: boolean;
   transcribedText?: string;
+  /** Normalized 0-1 box around this line, when the transcriber provided one. */
+  bbox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface Region {
@@ -40,6 +42,8 @@ export interface BoardState {
   type: "boardState";
   pass: number;
   updatedAt: string | null;
+  /** True when regions are newer than findings (analyzer still running on this text). */
+  analysisPending: boolean;
   regions: Region[];
   findings: Finding[];
 }
@@ -59,7 +63,49 @@ export interface StatusEvent {
   detail?: string;
 }
 
-export type ServerEvent = BoardState | GateEvent | StatusEvent;
+export interface HighlightEvent {
+  type: "highlight";
+  regionId: string;
+  /** 0 means the whole region. */
+  line: number;
+}
+
+export interface InterjectionRelease {
+  findingId: string;
+  regionId: string;
+  line: number;
+  tier: 1 | 2 | 3;
+  category: string;
+  mode: "statement" | "question";
+  /** Send to the voice model as "INTERJECT: " + instruction. Never contains the fix. */
+  instruction: string;
+}
+
+export type SessionPhase = "clarifying" | "writing" | "tracing" | "done";
+
+export type DiffOp = "same" | "formatting" | "changed" | "added" | "removed";
+
+export interface DiffLine {
+  op: DiffOp;
+  boardLine: number | null;
+  typedLine: number | null;
+  boardText: string | null;
+  typedText: string | null;
+}
+
+/** Typed code takes priority; boardSnapshot is the board at the first submit. */
+export interface Submission {
+  type: "submission";
+  submittedAt: string;
+  language: string | null;
+  boardSnapshot: string[];
+  typedCode: string[];
+  diff: DiffLine[];
+  counts: Record<DiffOp, number>;
+  changedAfterBoard: boolean;
+}
+
+export type ServerEvent = BoardState | GateEvent | StatusEvent | HighlightEvent | Submission;
 
 export interface TranscriptTurn {
   role: "candidate" | "interviewer";

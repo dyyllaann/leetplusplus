@@ -54,7 +54,7 @@ def test_frame_produces_board_state(client):
         while time.time() < deadline:
             ev = ws.receive_json()
             events.append(ev)
-            if ev["type"] == "boardState":
+            if ev["type"] == "boardState" and not ev["analysisPending"]:
                 break
     types = [e["type"] for e in events]
     assert types[0] == "gate" and "boardState" in types
@@ -166,3 +166,59 @@ def test_rewrite_adds_region_transcriber_missed():
         region_id="code_1", lines=["def twoSum(values, target):", "seen = []"])])
     assert [r.id for r in out.regions] == ["code_1"]
     assert out.regions[0].lines[1].text == "seen = []"
+
+
+def test_board_state_sent_before_analysis_finishes(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    with client.websocket_connect(f"/sessions/{sid}/ws") as ws:
+        ws.send_json({"type": "frame", "capturedAt": "t", "imageData": FRAME})
+        states = []
+        deadline = time.time() + 5
+        while time.time() < deadline and len(states) < 2:
+            ev = ws.receive_json()
+            if ev["type"] == "boardState":
+                states.append(ev)
+    assert [s["analysisPending"] for s in states] == [True, False]
+    assert states[0]["regions"] and states[1]["findings"]
+
+
+def test_sync_returns_fresh_board_when_idle(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    body = client.post(f"/sessions/{sid}/sync", json={"timeoutSeconds": 0.5}).json()
+    assert body["fresh"] is True and body["boardState"]["type"] == "boardState"
+
+
+def test_sync_times_out_while_change_is_pending(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    app_module.store.get(sid).pending_change = True
+    start = time.time()
+    body = client.post(f"/sessions/{sid}/sync", json={"timeoutSeconds": 0.3}).json()
+    assert body["fresh"] is False and time.time() - start >= 0.3
+
+
+def test_voice_endpoints(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    cfg = client.get(f"/sessions/{sid}/voice-config").json()
+    assert cfg["voiceName"] == app_module.config.VOICE_NAME
+    assert "Two Sum" in cfg["systemPrompt"] and {t["name"] for t in cfg["tools"]} == {
+        "ask_question", "point_to_region", "flag_error_type", "give_hint"}
+    assert client.post(f"/sessions/{sid}/interjection").json() == {"release": None}
+    assert client.post(f"/sessions/{sid}/phase", json={"phase": "tracing"}).json()["ok"]
+    assert client.post(f"/sessions/{sid}/phase", json={"phase": "nap"}).status_code == 422
+    assert client.post(f"/sessions/{sid}/tools", json={"name": "give_hint", "args": {"level": 1}}).json()["ok"]
+    assert client.post(f"/sessions/{sid}/transcript", json={"role": "candidate", "text": "hi"}).json()["ok"]
+
+
+def test_submit_keeps_board_snapshot_and_allows_resubmit(client):
+    sid = client.post("/sessions", json={"problemId": "two-sum"}).json()["sessionId"]
+    session = app_module.store.get(sid)
+    session.apply_pass(T, [])
+    first = client.post(f"/sessions/{sid}/submit", json={"code": "a = 1", "language": "js"}).json()
+    assert first["boardSnapshot"] == ["str2 = str2.split('');"] and first["typedCode"] == ["a = 1"]
+    # The board changes after submit; the snapshot does not, and typed code can be resubmitted.
+    session.apply_pass(Transcription.model_validate({"regions": []}), [])
+    second = client.post(f"/sessions/{sid}/submit", json={"code": "str2 = str2.split('');"}).json()
+    assert second["boardSnapshot"] == first["boardSnapshot"]
+    assert second["changedAfterBoard"] is False
+    assert client.get(f"/sessions/{sid}/submission").json()["typedCode"] == ["str2 = str2.split('');"]
+    assert session.phase == "done"
