@@ -53,6 +53,28 @@ class Transcription(_Strict):
     regions: list[Region]
 
 
+# Request schema used when LINE_PATCH=0: identical to the original format (no line boxes),
+# so line-level updates can be fully switched off from .env. Parsed output is converted
+# to Transcription with every line bbox set to None.
+class LineNoBox(_Strict):
+    n: int = Field(description="1-based line number within the region")
+    text: str = Field(description="Exact characters as written, errors included")
+    low_confidence_chars: list[int] = Field(
+        description="0-based indices into text of characters that are hard to read"
+    )
+
+
+class RegionNoBox(_Strict):
+    id: str
+    type: Literal["code", "diagram", "examples", "trace"]
+    bbox: BBox
+    lines: list[LineNoBox]
+
+
+class TranscriptionNoBox(_Strict):
+    regions: list[RegionNoBox]
+
+
 # --- Analysis ----------------------------------------------------------------
 
 class Finding(_Strict):

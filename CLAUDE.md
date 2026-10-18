@@ -43,7 +43,8 @@ Line-level updates (backend/vision/localize.py): full transcriptions return a bb
 When the gate's change mask falls on at most LINE_PATCH_MAX_LINES known lines, only those
 lines are cropped and re-read (Perceptron, single-line schema) and patched into the JSON.
 New lines, new regions, a blank re-read, camera movement, or every FULL_PASS_EVERY partial
-passes fall back to a full-board transcription. Disable with LINE_PATCH=0.
+passes fall back to a full-board transcription. LINE_PATCH=0 disables it AND restores the
+original transcription request (no line boxes), so it is a full rollback from .env.
 Backend <-> frontend contract: docs/api.md.
 
 Voice wiring (backend side is built; the Gemini Live client must call it, see docs/api.md):

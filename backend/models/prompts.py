@@ -16,10 +16,15 @@ Rules:
 - One output line per written line, in top-to-bottom order, numbered from 1 per region.
 - Hand-drawn curly braces are "{" and "}".
 - List the 0-based index of any character you are unsure of in low_confidence_chars.
-- bbox uses a 0-1000 normalized grid, origin top-left. Give every region a bbox and
-  every line its own tight bbox around that line's writing.
+- bbox uses a 0-1000 normalized grid, origin top-left.
 - Ignore people, hands, and anything that is not writing on the board.
 """
+
+# With line-level updates on, every line also needs its own box.
+TRANSCRIBE_SYSTEM_LINE_BOXES = TRANSCRIBE_SYSTEM.replace(
+    "- bbox uses a 0-1000 normalized grid, origin top-left.\n",
+    "- bbox uses a 0-1000 normalized grid, origin top-left. Give every region a bbox and\n"
+    "  every line its own tight bbox around that line's writing.\n")
 
 TRANSCRIBE_USER = "Transcribe the whiteboard literally into the JSON schema."
 
