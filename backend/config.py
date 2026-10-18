@@ -20,6 +20,9 @@ VOICE_MODEL = os.getenv("VOICE_MODEL", "gemini-3.8-live")
 VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
 # Prebuilt voice (list: ai.google.dev/gemini-api/docs/speech-generation#voices). Empty = model default.
 VOICE_NAME = os.getenv("VOICE_NAME", "Achird")
-# Silence that ends a candidate turn for Gemini. Kept short so questions get quick answers;
-# replies to thinking-aloud turns are muted by the bridge (policy.addressed_to_interviewer).
+# Silence that ends a candidate turn for Gemini's speech detection (it only transcribes and
+# speaks; Claude in voice/brain.py decides whether to reply at all).
 VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "800"))
+# Interviewer brain (Claude decides what to say; Gemini Live only speaks it).
+BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-opus-5-5")
+BRAIN_EFFORT = os.getenv("BRAIN_EFFORT", "low")

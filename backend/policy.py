@@ -53,20 +53,6 @@ CHECK_PATTERN = re.compile(
 )
 
 
-ADDRESSED_PATTERN = re.compile(
-    r"(\?|^\s*(what|how|can|could|should|is|are|does|do|will|would|why|when|where|which|may)\b|"
-    r"\b(hint|ready|i'?m done|finished|that'?s it|question|stuck|repeat|sorry|"
-    r"no questions|go ahead|let'?s (start|begin)|yes|yeah|nope|no)\b)",
-    re.IGNORECASE,
-)
-
-
-def addressed_to_interviewer(utterance: str) -> bool:
-    """True if the candidate's turn calls for a spoken reply (a question, an answer to the
-    interviewer, or a status like "ready"/"done"); False for thinking aloud."""
-    return bool(ADDRESSED_PATTERN.search(utterance))
-
-
 def candidate_asks_for_check(utterance: str) -> bool:
     return bool(CHECK_PATTERN.search(utterance))
 

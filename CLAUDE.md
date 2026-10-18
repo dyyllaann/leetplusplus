@@ -39,9 +39,10 @@ that JSON plus the frame image (the image catches Perceptron's occasional "corre
 Regions still come from the transcription output. Camera should be on a fixed tripod.
 Manual 4-click flattening is the first thing to add back if time allows.
 Backend <-> frontend contract: docs/api.md.
-Voice: the backend talks to Gemini Live (`gemini-3.8-live`) directly with the google-genai SDK
-(backend/voice/bridge.py) instead of Pipecat; browser audio is raw PCM over a FastAPI WebSocket,
-because WebRTC/UDP does not pass through the SSH tunnel used in development.
+Voice: Gemini Live (`gemini-3.8-live`, google-genai SDK, no Pipecat) is only the ears and voice:
+it transcribes the candidate and speaks lines verbatim; its own replies are muted. Claude
+(backend/voice/brain.py, BRAIN_MODEL) decides what the interviewer says, after the policy.
+Browser audio is raw PCM over a FastAPI WebSocket (WebRTC/UDP does not pass the SSH tunnel).
 
 ## Invariants (do not violate)
 - Transcription is LITERAL. Never correct the candidate's code, syntax, or comparisons.

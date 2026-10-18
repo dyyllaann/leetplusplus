@@ -3,7 +3,8 @@ import asyncio
 from backend.models.schemas import Finding, Transcription
 from backend.policy import Release
 from backend.session.state import Session, TrackedFinding
-from backend.voice.bridge import board_note, coach_note
+from backend.voice.bridge import coach_detail
+from backend.voice.brain import render_request
 from backend.voice.tools import FUNCTION_DECLARATIONS, HintLadder, VoiceTools
 
 T = Transcription.model_validate({"regions": [{
@@ -64,27 +65,29 @@ def test_point_and_flag_emit_highlight_and_validate_category():
     assert "error" in bad
 
 
-def test_board_note_has_text_but_no_findings():
-    note = board_note(session_with_finding())
-    assert "line 1: comp != target - n" in note and "SECRET" not in note
+def test_brain_request_has_board_and_hint_but_no_finding_messages():
+    s = session_with_finding()
+    s.transcript.append({"role": "candidate", "text": "does this look okay?"})
+    req = render_request(s, "candidate_spoke", "", (1, "Ask them to trace line 1."))
+    assert "line 1: comp != target - n" in req
+    assert "candidate: does this look okay?" in req
+    assert "level 1: Ask them to trace line 1." in req
+    assert "SECRET" not in req
 
 
-def test_coach_note_modes():
+def test_coach_detail_modes_omit_the_fix():
     s = session_with_finding(conf=0.5)
     tf: TrackedFinding = s.findings[0]
-    assert "ask a probing question" in coach_note(Release(tf, "question"))
-    assert "name its category" in coach_note(Release(tf, "correction"))
-    assert "line=1" in coach_note(Release(tf, "correction"))
-    assert "SECRET" not in coach_note(Release(tf, "correction"))
+    assert "probing question" in coach_detail(Release(tf, "question"))
+    correction = coach_detail(Release(tf, "correction"))
+    assert "line=1" in correction and "missing_state_update" in correction
+    assert "SECRET" not in correction
 
 
-def test_bridge_mutes_replies_to_thinking_aloud():
+def test_bridge_only_voices_brain_lines(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     from backend.voice.bridge import VoiceBridge
     b = VoiceBridge(session_with_finding(), ws=None, notify_board=None)
-    b._buffers["candidate"] = "so I'll keep a map from value to index"
-    assert not b.should_voice_turn()
-    b._buffers["candidate"] = "Can I assume the input is sorted?"
-    assert b.should_voice_turn()
-    b._buffers["candidate"] = "so I'll keep a map"
-    b.awaiting_response = True          # coach notes and the greeting are always voiced
+    assert not b.should_voice_turn()      # Gemini replying on its own: muted
+    b.awaiting_response = True            # a [SAY] from the brain: played
     assert b.should_voice_turn()
