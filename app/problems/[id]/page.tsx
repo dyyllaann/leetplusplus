@@ -56,6 +56,7 @@ function SessionView({ problem }: { problem: Problem }) {
   const [attempts, setAttempts] = useState<PreviousAttempt[]>([]);
   const [attemptsLoaded, setAttemptsLoaded] = useState(false);
   const sessionStartedAt = useRef<number | null>(null);
+  const sessionStartedForVisit = useRef(false);
   const attemptsStorageKey = `leetplusplus:attempts:${problem.id}`;
 
   useEffect(() => {
@@ -99,9 +100,12 @@ function SessionView({ problem }: { problem: Problem }) {
   }, [isSessionActive]);
 
   async function beginSession() {
+    if (sessionStartedForVisit.current) return;
+    sessionStartedForVisit.current = true;
     try {
       await camera.start();
     } catch {
+      sessionStartedForVisit.current = false;
       return; // camera.error is shown in the camera panel
     }
     sessionStartedAt.current = Date.now();
@@ -189,6 +193,10 @@ function SessionView({ problem }: { problem: Problem }) {
             <button type="button" onClick={endSession} className="rounded border border-stone-300 px-2 py-1.5 text-xs font-semibold text-stone-700 hover:bg-white sm:px-3">
               End session
             </button>
+          ) : hasSessionStarted ? (
+            <span role="status" className="rounded border border-stone-300 px-2 py-1.5 text-xs font-semibold text-stone-500 sm:px-3">
+              Session ended
+            </span>
           ) : (
             <button
               type="button"
