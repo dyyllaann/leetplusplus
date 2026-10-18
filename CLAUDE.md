@@ -39,6 +39,9 @@ that JSON plus the frame image (the image catches Perceptron's occasional "corre
 Regions still come from the transcription output. Camera should be on a fixed tripod.
 Manual 4-click flattening is the first thing to add back if time allows.
 Backend <-> frontend contract: docs/api.md.
+Voice: the backend talks to Gemini Live (`gemini-3.8-live`) directly with the google-genai SDK
+(backend/voice/bridge.py) instead of Pipecat; browser audio is raw PCM over a FastAPI WebSocket,
+because WebRTC/UDP does not pass through the SSH tunnel used in development.
 
 ## Invariants (do not violate)
 - Transcription is LITERAL. Never correct the candidate's code, syntax, or comparisons.

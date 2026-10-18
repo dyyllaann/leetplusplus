@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import binascii
+import logging
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -26,6 +27,7 @@ from backend.pipeline import run_pass  # noqa: E402
 from backend.problems import get_problem, list_problems, problem_text  # noqa: E402
 from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
+from backend.voice.bridge import VoiceBridge  # noqa: E402
 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
@@ -156,3 +158,27 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
         pass
     finally:
         subscribers[session_id].discard(ws)
+
+
+@app.websocket("/sessions/{session_id}/voice")
+async def voice_ws(ws: WebSocket, session_id: str) -> None:
+    session = store.get(session_id)
+    if session is None:
+        await ws.close(code=4404)
+        return
+    await ws.accept()
+
+    async def notify_board() -> None:
+        await broadcast(session_id, session.board_state())
+
+    try:
+        await VoiceBridge(session, ws, notify_board).run()
+    except WebSocketDisconnect:
+        pass
+    except Exception as exc:
+        logging.getLogger(__name__).exception("voice session failed")
+        try:
+            await ws.send_json({"type": "voiceStatus", "state": "error", "detail": repr(exc)})
+            await ws.close()
+        except Exception:
+            pass

@@ -5,9 +5,11 @@ import { notFound } from "next/navigation";
 import { use, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import problems from "@/data/problems.json";
 import { BoardPanel, CameraPanel } from "@/app/problems/[id]/board-panels";
+import { VoiceStrip } from "@/app/problems/[id]/voice-panel";
 import ThemeToggle from "@/app/theme-toggle";
 import { useCamera } from "@/lib/capture";
 import { useBoardSession } from "@/lib/session";
+import { useVoiceSession } from "@/lib/voice";
 
 type Problem = (typeof problems)[number];
 
@@ -46,6 +48,7 @@ function SessionView({ problem }: { problem: Problem }) {
   const [resizeTarget, setResizeTarget] = useState<ResizeTarget | null>(null);
   const camera = useCamera();
   const boardSession = useBoardSession(problem.id, camera.videoRef);
+  const voice = useVoiceSession();
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [hasSessionStarted, setHasSessionStarted] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -105,7 +108,8 @@ function SessionView({ problem }: { problem: Problem }) {
     setElapsedSeconds(0);
     setHasSessionStarted(true);
     setIsSessionActive(true);
-    await boardSession.start();
+    const sessionId = await boardSession.start();
+    if (sessionId) await voice.start(sessionId);
   }
 
   async function endSession() {
@@ -126,6 +130,7 @@ function SessionView({ problem }: { problem: Problem }) {
       sessionStartedAt.current = null;
     }
     setIsSessionActive(false);
+    voice.stop();
     camera.stop();
     await boardSession.stop();
   }
@@ -195,6 +200,7 @@ function SessionView({ problem }: { problem: Problem }) {
           )}
         </div>
       </header>
+      <VoiceStrip voice={voice} />
       <div
         ref={workspaceRef}
         className="workspace-grid min-h-0 flex-1"
@@ -329,7 +335,7 @@ function SessionView({ problem }: { problem: Problem }) {
             onKeyDown={(event) => resizeByKeyboard("rows", event)}
           />
 
-          <BoardPanel board={boardSession.board} problemId={problem.id} />
+          <BoardPanel board={boardSession.board} problemId={problem.id} highlight={voice.highlight} />
         </div>
       </div>
     </main>

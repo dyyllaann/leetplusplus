@@ -49,6 +49,9 @@ class Session:
     history: list[Transcription] = field(default_factory=list)
     findings: list[TrackedFinding] = field(default_factory=list)
     busy: bool = False
+    board_version: int = 0  # bumps whenever board state changes; the voice bridge watches it
+    transcript: list[dict[str, Any]] = field(default_factory=list)  # {role, text, at}
+    tool_calls: list[dict[str, Any]] = field(default_factory=list)
     last_pass_at: float = 0.0
     trigger_reason: str | None = None
     updated_at: str | None = None
@@ -72,6 +75,7 @@ class Session:
         """Record a completed pass. Findings that persist keep their id and status;
         findings no longer reported become resolved."""
         self.pass_count += 1
+        self.board_version += 1
         self.last_pass_at = time.monotonic()
         self.trigger_reason = None
         self.updated_at = datetime.now(timezone.utc).isoformat()

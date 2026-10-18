@@ -6,19 +6,6 @@ import type { BoardState, GateEvent, ServerEvent, StatusEvent } from "@/lib/type
 const FRAMES_PER_SECOND = 2;
 const MAX_BUFFERED_BYTES = 2_000_000;
 
-export interface VoiceSession {
-  start(): Promise<void>;
-  end(): Promise<void>;
-  sendContext(context: string): Promise<void>;
-}
-
-// TODO Phase 3: connect a voice session to the Gemini Live service.
-export const noopVoiceSession: VoiceSession = {
-  start: async () => {},
-  end: async () => {},
-  sendContext: async () => {},
-};
-
 /**
  * Streams camera frames to the backend vision loop and tracks the board state
  * it sends back. Call start() after the camera is playing.
@@ -52,7 +39,7 @@ export function useBoardSession(problemId: string, videoRef: RefObject<HTMLVideo
       id = await createSession(problemId);
     } catch (err) {
       setConnectionError(`Could not reach the backend: ${err instanceof Error ? err.message : err}`);
-      return;
+      return null;
     }
     setSessionId(id);
 
@@ -75,6 +62,7 @@ export function useBoardSession(problemId: string, videoRef: RefObject<HTMLVideo
         if (frame) socket.send(JSON.stringify({ type: "frame", ...frame }));
       }, 1000 / FRAMES_PER_SECOND);
     };
+    return id;
   }, [problemId, videoRef]);
 
   const stop = useCallback(async () => {

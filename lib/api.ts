@@ -6,6 +6,10 @@ export function sessionSocketUrl(sessionId: string): string {
   return `${BACKEND_URL.replace(/^http/, "ws")}/sessions/${sessionId}/ws`;
 }
 
+export function voiceSocketUrl(sessionId: string): string {
+  return `${BACKEND_URL.replace(/^http/, "ws")}/sessions/${sessionId}/voice`;
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BACKEND_URL}${path}`, {
     method: "POST",

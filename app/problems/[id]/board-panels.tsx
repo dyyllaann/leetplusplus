@@ -95,7 +95,16 @@ export function CameraPanel({
   );
 }
 
-export function BoardPanel({ board, problemId }: { board: BoardState | null; problemId: string }) {
+export function BoardPanel({
+  board,
+  problemId,
+  highlight = null,
+}: {
+  board: BoardState | null;
+  problemId: string;
+  /** Line the voice interviewer pointed to (point_to_region / flag_error_type). */
+  highlight?: { regionId: string; line: number } | null;
+}) {
   const codeRegions = board?.regions.filter((region) => region.type === "code") ?? [];
   const otherRegions = board?.regions.filter((region) => region.type !== "code") ?? [];
   const [activeView, setActiveView] = useState<"transcript" | "notes">("transcript");
@@ -170,7 +179,14 @@ export function BoardPanel({ board, problemId }: { board: BoardState | null; pro
                 {region.id} · {region.type}
               </p>
               {region.lines.map((line) => (
-                <div key={line.n} className="flex gap-3">
+                <div
+                  key={line.n}
+                  className={`flex gap-3 ${
+                    highlight && highlight.regionId === region.id && (highlight.line === line.n || highlight.line === 0)
+                      ? "rounded bg-amber-100 ring-1 ring-amber-400"
+                      : ""
+                  }`}
+                >
                   <span className="w-6 shrink-0 select-none text-right text-stone-400">{line.n}</span>
                   <span
                     className={`whitespace-pre-wrap ${line.corrected ? "underline decoration-amber-500 decoration-dotted underline-offset-4" : ""}`}
