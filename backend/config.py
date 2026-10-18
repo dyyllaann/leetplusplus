@@ -2,6 +2,14 @@
 
 import os
 
+CORS_ORIGINS = [
+	origin.strip().rstrip("/")
+	for origin in os.getenv(
+		"CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+	).split(",")
+	if origin.strip()
+]
+
 TRANSCRIBER = os.getenv("TRANSCRIBER", "perceptron")
 TRANSCRIBER_REASONING = os.getenv("TRANSCRIBER_REASONING", "low")
 ANALYZER = os.getenv("ANALYZER", "claude")

@@ -1,7 +1,11 @@
 # Backend API contract (frontend <-> FastAPI)
 
 Backend runs at `http://localhost:8000` (`.venv/bin/uvicorn backend.app:app --reload --port 8000`).
-CORS allows `http://localhost:3000`. All JSON keys are camelCase.
+CORS defaults to `http://localhost:3000` and `http://127.0.0.1:3000`; configure additional browser origins with the comma-separated `CORS_ORIGINS` environment variable. All JSON keys are camelCase.
+
+## Production deployment
+
+Vercel deploys the Next.js frontend, not this FastAPI service. Deploy FastAPI separately to a public host that supports persistent WebSockets. Set `NEXT_PUBLIC_BACKEND_URL` in Vercel to that service's HTTPS base URL, and set `CORS_ORIGINS` on FastAPI to the exact Vercel frontend origin (for example, `https://your-app.vercel.app`). Redeploy the frontend after changing `NEXT_PUBLIC_BACKEND_URL`; it is embedded at build time. HTTPS backend URLs are converted to secure WebSocket URLs for voice and camera sessions.
 
 Owner of this file: backend. Frontend: please request changes rather than editing it directly.
 

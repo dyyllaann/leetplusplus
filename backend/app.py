@@ -37,7 +37,7 @@ from backend.submission import Submission, line_diff, submit as make_submission 
 app = FastAPI(title="Whiteboard Practice Coach")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=config.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )

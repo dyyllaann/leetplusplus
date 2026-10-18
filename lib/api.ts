@@ -1,17 +1,26 @@
 // REST calls to the FastAPI backend (docs/api.md).
 
-export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+const configuredBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.trim();
+export const BACKEND_URL = configuredBackendUrl ||
+  (process.env.NODE_ENV === "development" ? "http://localhost:8000" : "");
+
+function backendUrl(): string {
+  if (!BACKEND_URL) {
+    throw new Error("Backend URL is not configured. Set NEXT_PUBLIC_BACKEND_URL in the deployment environment.");
+  }
+  return BACKEND_URL.replace(/\/+$/, "");
+}
 
 export function sessionSocketUrl(sessionId: string): string {
-  return `${BACKEND_URL.replace(/^http/, "ws")}/sessions/${sessionId}/ws`;
+  return `${backendUrl().replace(/^http/, "ws")}/sessions/${sessionId}/ws`;
 }
 
 export function voiceSocketUrl(sessionId: string): string {
-  return `${BACKEND_URL.replace(/^http/, "ws")}/sessions/${sessionId}/voice`;
+  return `${backendUrl().replace(/^http/, "ws")}/sessions/${sessionId}/voice`;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BACKEND_URL}${path}`, {
+  const res = await fetch(`${backendUrl()}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -52,7 +61,7 @@ export function syncBoard(sessionId: string, timeoutSeconds = 2.5): Promise<Sync
 type FunctionDeclaration = { name: string; description: string; parameters: Record<string, unknown> };
 
 export async function getVoiceConfig(sessionId: string): Promise<{ systemPrompt: string; tools: FunctionDeclaration[]; voiceName: string }> {
-  const res = await fetch(`${BACKEND_URL}/sessions/${sessionId}/voice-config`);
+  const res = await fetch(`${backendUrl()}/sessions/${sessionId}/voice-config`);
   if (!res.ok) throw new Error(`voice-config failed: ${res.status}`);
   return res.json();
 }
