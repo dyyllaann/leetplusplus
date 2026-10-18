@@ -119,7 +119,7 @@ class VoiceTools:
         return result
 
     async def _ask_question(self, text: str) -> dict[str, Any]:
-        return {"ok": True, "note": "Logged only. Say the question aloud to the candidate now."}
+        return {"ok": True}
 
     async def _point_to_region(self, region_id: str, line: int | None = None) -> dict[str, Any]:
         await self.emit({"type": "highlight", "regionId": region_id, "line": line or 0})

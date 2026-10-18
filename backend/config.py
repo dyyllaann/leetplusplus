@@ -18,3 +18,7 @@ ANALYSIS_INTERVAL_SECONDS = float(os.getenv("ANALYSIS_INTERVAL_SECONDS", "5.0"))
 # Voice agent (Gemini Live, audio only). Model ID per ai.google.dev/gemini-api/docs/live-api/capabilities.
 VOICE_MODEL = os.getenv("VOICE_MODEL", "gemini-3.8-live")
 VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
+# Prebuilt voice (list: ai.google.dev/gemini-api/docs/speech-generation#voices). Empty = model default.
+VOICE_NAME = os.getenv("VOICE_NAME", "")
+# How long the candidate must be silent before their turn ends. Thinking aloud has long pauses.
+VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "2000"))

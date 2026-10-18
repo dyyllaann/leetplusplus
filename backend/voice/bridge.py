@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts/interviewer.md"
 TICK_SECONDS = 0.5
 TIER_NAMES = {1: "approach", 2: "logic error", 3: "edge case", 4: "syntax"}
-TRIGGER_AFTER_SILENCE_SECONDS = 1.0
+TRIGGER_AFTER_SILENCE_SECONDS = config.VOICE_SILENCE_MS / 1000
 
 
 def board_note(session: Session) -> str:
@@ -94,6 +94,13 @@ class VoiceBridge:
         }
         if self.push_to_talk:
             cfg["realtime_input_config"] = {"automatic_activity_detection": {"disabled": True}}
+        else:
+            cfg["realtime_input_config"] = {"automatic_activity_detection": {
+                "silence_duration_ms": config.VOICE_SILENCE_MS,
+                "end_of_speech_sensitivity": "END_SENSITIVITY_LOW",
+            }}
+        if config.VOICE_NAME:
+            cfg["speech_config"] = {"voice_config": {"prebuilt_voice_config": {"voice_name": config.VOICE_NAME}}}
         return cfg
 
     async def run(self) -> None:
@@ -102,8 +109,8 @@ class VoiceBridge:
             await self._send_json({"type": "voiceStatus", "state": "connected",
                                    "pushToTalk": self.push_to_talk})
             await self._sync_board(live)
-            await self._prompt_response(live, "[COACH] The candidate just joined. Greet them in one "
-                                              "sentence and ask them to explain the problem and their approach.")
+            await self._prompt_response(live, "[COACH] The candidate just joined. Introduce yourself in one "
+                                              "short sentence and tell them to start whenever they are ready.")
             tasks = [asyncio.create_task(c) for c in
                      (self._from_browser(live), self._from_gemini(live), self._tick(live))]
             try:

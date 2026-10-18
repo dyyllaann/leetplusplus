@@ -21,7 +21,7 @@ from backend.session.state import TrackedFinding
 
 COOLDOWN_SECONDS = 20.0
 CONFIDENCE_THRESHOLD = 0.6
-SPEAKING_GRACE_SECONDS = 1.5
+SPEAKING_GRACE_SECONDS = 2.5  # longer than the 2 s end-of-turn silence
 
 DONE_PATTERN = re.compile(
     r"\b(i'?m done|i am done|that'?s it|finished|i think (this|that) works|let'?s (trace|test)|"
