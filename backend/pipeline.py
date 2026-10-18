@@ -10,7 +10,7 @@ from backend import config
 from backend.models.analyzer import Analyzer, get_analyzer
 from backend.models.call_log import save_call
 from backend.models.transcriber import Transcriber, get_transcriber
-from backend.models.schemas import Correction, Transcription
+from backend.models.schemas import BBox, Correction, Line, Region, RegionRewrite, Transcription
 from backend.session.state import Session
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
@@ -42,14 +42,27 @@ def normalize_region_ids(t: Transcription) -> Transcription:
     return Transcription(regions=renamed)
 
 
-def apply_corrections(t: Transcription, corrections: list[Correction]
+def apply_corrections(t: Transcription, corrections: list[Correction],
+                      rewrites: list[RegionRewrite] | None = None,
                       ) -> tuple[Transcription, dict[tuple[str, int], str]]:
-    """Patch lines the analyzer read differently from the image.
-    Returns the patched transcription and {(region_id, line): original text}."""
+    """Patch what the analyzer read differently from the image. A region rewrite
+    replaces the whole region (the transcriber invented or dropped lines); line
+    corrections patch single lines. Returns the patched transcription and
+    {(region_id, line): text the transcriber returned}."""
     by_key = {(c.region_id, c.line): c.text for c in corrections}
+    rewrite_by_region = {rw.region_id: rw.lines for rw in rewrites or []}
     originals: dict[tuple[str, int], str] = {}
     regions = []
     for r in t.regions:
+        if r.id in rewrite_by_region:
+            old = {ln.n: ln.text for ln in r.lines}
+            lines = [Line(n=i, text=text, low_confidence_chars=[])
+                     for i, text in enumerate(rewrite_by_region[r.id], 1)]
+            for ln in lines:
+                if old.get(ln.n, "").strip() != ln.text.strip():
+                    originals[(r.id, ln.n)] = old.get(ln.n, "")
+            regions.append(r.model_copy(update={"lines": lines}))
+            continue
         lines = []
         for ln in r.lines:
             new_text = by_key.get((r.id, ln.n))
@@ -58,6 +71,15 @@ def apply_corrections(t: Transcription, corrections: list[Correction]
                 ln = ln.model_copy(update={"text": new_text, "low_confidence_chars": []})
             lines.append(ln)
         regions.append(r.model_copy(update={"lines": lines}))
+    known = {r.id for r in t.regions}
+    for region_id, texts in rewrite_by_region.items():
+        if region_id in known:
+            continue
+        # The transcriber missed this region entirely; the analyzer read it from the image.
+        regions.append(Region(id=region_id, type="code", bbox=BBox(x1=0, y1=0, x2=1000, y2=1000),
+                              lines=[Line(n=i, text=text, low_confidence_chars=[]) for i, text in enumerate(texts, 1)]))
+        for i, text in enumerate(texts, 1):
+            originals[(region_id, i)] = ""
     return Transcription(regions=regions), originals
 
 
@@ -95,7 +117,8 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         await emit({"type": "status", "stage": "error", "detail": f"analysis: {a_call.error}"})
         return False
 
-    corrected, originals = apply_corrections(transcription, a_call.parsed.transcription_corrections)
+    corrected, originals = apply_corrections(transcription, a_call.parsed.transcription_corrections,
+                                             a_call.parsed.region_rewrites)
     session.apply_pass(corrected, a_call.parsed.findings, raw=transcription, corrected_lines=originals)
     await emit(session.board_state())
     await emit({"type": "status", "stage": "idle"})

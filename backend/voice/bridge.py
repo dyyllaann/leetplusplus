@@ -28,6 +28,7 @@ from backend.voice.tools import FUNCTION_DECLARATIONS, VoiceTools
 logger = logging.getLogger(__name__)
 PROMPT_PATH = Path(__file__).resolve().parents[1] / "prompts/interviewer.md"
 TICK_SECONDS = 0.5
+CHECK_WINDOW_SECONDS = 30.0  # a check request waits this long for a fresh analysis
 TIER_NAMES = {1: "approach", 2: "logic error", 3: "edge case", 4: "syntax"}
 TRIGGER_AFTER_SILENCE_SECONDS = config.VOICE_SILENCE_MS / 1000
 
@@ -77,6 +78,7 @@ class VoiceBridge:
         self.last_candidate_speech_at: float | None = None
         self.triggered_for_speech_at: float | None = None
         self.candidate_done = False
+        self.check_requested_at: float | None = None
         self.interviewer_speaking = False
         self.awaiting_response = False  # a turn_complete=True note was sent; reply not finished yet
         self._buffers = {"candidate": "", "interviewer": ""}
@@ -173,6 +175,9 @@ class VoiceBridge:
             if role == "candidate":
                 if policy.candidate_signals_done(text):
                     self.candidate_done = True
+                if policy.candidate_asks_for_check(text):
+                    self.check_requested_at = time.monotonic()
+                    self.session.trigger_reason = "candidate_asked_for_check"
                 if "hint" in text.lower():
                     self.tools.hints.requested = True
             self.session.transcript.append({"role": role, "text": text, "at": time.time()})
@@ -217,10 +222,13 @@ class VoiceBridge:
                 last_release_at=self.last_release_at,
                 candidate_done_or_tracing=self.candidate_done,
                 interviewer_speaking=self.interviewer_speaking or self.awaiting_response,
+                candidate_asked_for_check=self.check_requested_at is not None
+                and now - self.check_requested_at < CHECK_WINDOW_SECONDS,
             ))
             if release is None:
                 continue
             release.finding.status = "released"
+            self.check_requested_at = None
             self.last_release_at = now
             await self.notify_board()
             logger.info(f"releasing {release.finding.id} as {release.mode}")

@@ -21,7 +21,7 @@ from backend.session.state import TrackedFinding
 
 COOLDOWN_SECONDS = 20.0
 CONFIDENCE_THRESHOLD = 0.6
-SPEAKING_GRACE_SECONDS = 2.5  # longer than the 2 s end-of-turn silence
+SPEAKING_GRACE_SECONDS = 3.5  # longer than the end-of-turn silence (config.VOICE_SILENCE_MS)
 
 DONE_PATTERN = re.compile(
     r"\b(i'?m done|i am done|that'?s it|finished|i think (this|that) works|let'?s (trace|test)|"
@@ -37,12 +37,24 @@ class ConversationState:
     last_release_at: float | None = None
     candidate_done_or_tracing: bool = False
     interviewer_speaking: bool = False
+    candidate_asked_for_check: bool = False  # "does this look okay?" lifts the cooldown
 
 
 @dataclass
 class Release:
     finding: TrackedFinding
     mode: Literal["correction", "question"]
+
+
+CHECK_PATTERN = re.compile(
+    r"\b(look(s)? (ok|okay|good|right|correct)|(is|does) (this|that|it) (look )?(right|correct|work|ok|okay)|"
+    r"am i on (the right )?track|any (issues|problems|bugs))\b",
+    re.IGNORECASE,
+)
+
+
+def candidate_asks_for_check(utterance: str) -> bool:
+    return bool(CHECK_PATTERN.search(utterance))
 
 
 def candidate_signals_done(utterance: str) -> bool:
@@ -67,7 +79,8 @@ def decide(findings: list[TrackedFinding], state: ConversationState) -> Release 
         return None
     if state.interviewer_speaking:
         return None
-    if state.last_release_at is not None and state.now - state.last_release_at < COOLDOWN_SECONDS:
+    if (not state.candidate_asked_for_check and state.last_release_at is not None
+            and state.now - state.last_release_at < COOLDOWN_SECONDS):
         return None
     candidates = [t for t in findings if eligible(t, state)]
     if not candidates:

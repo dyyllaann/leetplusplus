@@ -4,7 +4,7 @@ import { captureFrame } from "@/lib/capture";
 import type { BoardState, GateEvent, ServerEvent, StatusEvent } from "@/lib/types";
 
 const FRAMES_PER_SECOND = 2;
-const MAX_BUFFERED_BYTES = 2_000_000;
+const MAX_BUFFERED_BYTES = 4_000_000;
 
 /**
  * Streams camera frames to the backend vision loop and tracks the board state

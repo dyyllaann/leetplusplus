@@ -29,7 +29,7 @@ class FakeAnalyzer:
         assert "Two Sum" in problem
         result = AnalysisResult(findings=[Finding(
             tier=2, category="logic", line=1, region_id="code_1", confidence=0.9, message="m")],
-            transcription_corrections=[])
+            transcription_corrections=[], region_rewrites=[])
         return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
 
 
@@ -128,7 +128,8 @@ def test_analyzer_corrections_patch_board_state_and_keep_skip_working(monkeypatc
         def analyze(self, image, mime, transcription, problem):
             calls.append(1)
             result = AnalysisResult(findings=[], transcription_corrections=[
-                Correction(region_id="code_1", line=1, text="str2 = str2.split('') !")])
+                Correction(region_id="code_1", line=1, text="str2 = str2.split('') !")],
+                region_rewrites=[])
             return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
 
     monkeypatch.setattr(pipeline, "models", lambda: (FakeTranscriber(), CorrectingAnalyzer()))
@@ -145,3 +146,23 @@ def test_analyzer_corrections_patch_board_state_and_keep_skip_working(monkeypatc
     # Same raw transcription next pass: analyzer is skipped even though displayed text differs.
     asyncio.run(pipeline.run_pass(s, b"img", "image/jpeg", emit))
     assert len(calls) == 1
+
+
+def test_region_rewrite_replaces_invented_lines():
+    from backend.models.schemas import RegionRewrite
+    invented = Transcription.model_validate({"regions": [{"id": "code_1", "type": "code",
+        "bbox": {"x1": 0, "y1": 0, "x2": 1, "y2": 1},
+        "lines": [{"n": i, "text": t, "low_confidence_chars": []} for i, t in enumerate(
+            ["def twoSum(nums, target):", "for i in range(len(nums)):", "return [i, j]"], 1)]}]})
+    out, originals = pipeline.apply_corrections(invented, [], [RegionRewrite(
+        region_id="code_1", lines=["def twoSum(values, target):", "seen = {}"])])
+    assert [ln.text for ln in out.regions[0].lines] == ["def twoSum(values, target):", "seen = {}"]
+    assert originals == {("code_1", 1): "def twoSum(nums, target):", ("code_1", 2): "for i in range(len(nums)):"}
+
+
+def test_rewrite_adds_region_transcriber_missed():
+    from backend.models.schemas import RegionRewrite
+    out, originals = pipeline.apply_corrections(Transcription(regions=[]), [], [RegionRewrite(
+        region_id="code_1", lines=["def twoSum(values, target):", "seen = []"])])
+    assert [r.id for r in out.regions] == ["code_1"]
+    assert out.regions[0].lines[1].text == "seen = []"

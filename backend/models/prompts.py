@@ -13,6 +13,9 @@ Rules:
 - Copy characters EXACTLY as written. Do not fix syntax, method names, operators,
   comparisons, spelling, indentation, or missing punctuation. Bugs must survive.
 - If the writer wrote a wrong method name, keep it. Never substitute what they "meant".
+- NEVER complete, infer, or invent code. Transcribe only characters you can actually see.
+  If writing is too small or faint to read, use "?" for each unreadable character, and
+  return fewer lines rather than guessing. An empty or partial board is normal.
 - One output line per written line, in top-to-bottom order, numbered from 1 per region.
 - Hand-drawn curly braces are "{" and "}".
 - List the 0-based index of any character you are unsure of in low_confidence_chars.
@@ -55,6 +58,12 @@ Transcription corrections:
   changed characters such as "!=" read as "="), add a correction with the line exactly
   as written on the board, errors included. Do not correct the candidate's code;
   correct only the transcription. Leave the list empty when they agree.
+- If a region's transcription has lines that are NOT on the board (invented code), or is
+  missing lines that are, add a region_rewrite with every line of that region exactly as
+  written, errors included, in order. Use "?" for characters you cannot read; never fill in
+  code that is not visible. Leave region_rewrites empty when the lines match the board.
+- If the transcription missed a code region entirely, add a region_rewrite with a new
+  region_id like "code_1" (or the next unused number).
 """
 
 

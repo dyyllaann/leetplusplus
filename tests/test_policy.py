@@ -49,3 +49,12 @@ def test_done_detection():
 
 def test_no_release_while_interviewer_speaking():
     assert decide([tf(1)], state(interviewer_speaking=True)) is None
+
+
+def test_check_request_detection_and_cooldown_bypass():
+    from backend.policy import candidate_asks_for_check
+    assert candidate_asks_for_check("does everything look okay so far?")
+    assert candidate_asks_for_check("Is this right?")
+    assert not candidate_asks_for_check("I'll loop over the values")
+    assert decide([tf(2)], state(last_release_at=95.0)) is None
+    assert decide([tf(2)], state(last_release_at=95.0, candidate_asked_for_check=True)) is not None

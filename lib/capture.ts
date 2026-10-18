@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CapturedFrame } from "@/lib/types";
 
-const MAX_SIDE = 1280;
-const JPEG_QUALITY = 0.8;
+const MAX_SIDE = 1920;
+const JPEG_QUALITY = 0.85;
 
 export function useCamera() {
   const videoRef = useRef<HTMLVideoElement | null>(null);

@@ -61,10 +61,18 @@ class Correction(_Strict):
     text: str = Field(description="The line exactly as written on the board, errors included")
 
 
+class RegionRewrite(_Strict):
+    region_id: str
+    lines: list[str] = Field(description="Every line of the region exactly as written on the board")
+
+
 class AnalysisResult(_Strict):
     findings: list[Finding]
     transcription_corrections: list[Correction] = Field(
         description="Lines where the image shows different characters than the transcription"
+    )
+    region_rewrites: list[RegionRewrite] = Field(
+        description="Regions whose transcription invented or missed lines, rewritten in full"
     )
 
 
