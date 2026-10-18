@@ -61,7 +61,11 @@ Board state after each completed pass:
       "id": "code_1",
       "type": "code",
       "bbox": { "x": 0.465, "y": 0.185, "width": 0.325, "height": 0.605 },
-      "lines": [ { "n": 1, "text": "function Palindrome(str) {", "lowConfidenceChars": [] } ]
+      "lines": [
+        { "n": 1, "text": "function Palindrome(str) {", "lowConfidenceChars": [], "corrected": false },
+        { "n": 4, "text": "comp != target - n", "lowConfidenceChars": [], "corrected": true,
+          "transcribedText": "comp = target - n" }
+      ]
     }
   ],
   "findings": [
@@ -79,6 +83,9 @@ Board state after each completed pass:
 }
 ```
 - `bbox` is normalized 0-1 relative to the frame (multiply by the displayed width/height).
+- `corrected: true` means the analyzer saw different characters in the image than the transcriber
+  read; `text` is the board as written, `transcribedText` is what the transcriber returned.
+  Show `text` in the editor (optionally with a subtle marker).
 - `severity` is the tier: 1 approach, 2 logic, 3 edge case, 4 syntax.
 - `line` is 0 when a finding is not tied to a line.
 - `status`: `new | queued | released | resolved`. Finding `id`s are stable across passes while the same issue persists.

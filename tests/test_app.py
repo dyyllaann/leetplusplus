@@ -28,7 +28,8 @@ class FakeAnalyzer:
     def analyze(self, image, mime, transcription, problem):
         assert "Two Sum" in problem
         result = AnalysisResult(findings=[Finding(
-            tier=2, category="logic", line=1, region_id="code_1", confidence=0.9, message="m")])
+            tier=2, category="logic", line=1, region_id="code_1", confidence=0.9, message="m")],
+            transcription_corrections=[])
         return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
 
 
@@ -114,3 +115,33 @@ def test_line_numbers_are_reassigned():
         "bbox": {"x1": 0, "y1": 0, "x2": 1, "y2": 1},
         "lines": [{"n": 1, "text": t, "low_confidence_chars": []} for t in ("a", "b", "c")]}]})
     assert [ln.n for ln in pipeline.normalize_region_ids(t).regions[0].lines] == [1, 2, 3]
+
+
+def test_analyzer_corrections_patch_board_state_and_keep_skip_working(monkeypatch, tmp_path):
+    import asyncio
+    from backend.models.schemas import Correction
+    from backend.session.state import Session
+
+    calls = []
+
+    class CorrectingAnalyzer:
+        def analyze(self, image, mime, transcription, problem):
+            calls.append(1)
+            result = AnalysisResult(findings=[], transcription_corrections=[
+                Correction(region_id="code_1", line=1, text="str2 = str2.split('') !")])
+            return ModelCall(provider="fake", model="fake", parsed=result, latency_s=0.0)
+
+    monkeypatch.setattr(pipeline, "models", lambda: (FakeTranscriber(), CorrectingAnalyzer()))
+    monkeypatch.setattr("backend.session.state.LOG_ROOT", tmp_path)
+    s = Session(id="s", problem_id="two-sum", problem_text="Two Sum")
+
+    async def emit(e):
+        pass
+
+    asyncio.run(pipeline.run_pass(s, b"img", "image/jpeg", emit))
+    line = s.board_state()["regions"][0]["lines"][0]
+    assert line == {"n": 1, "text": "str2 = str2.split('') !", "lowConfidenceChars": [],
+                    "corrected": True, "transcribedText": "str2 = str2.split('');"}
+    # Same raw transcription next pass: analyzer is skipped even though displayed text differs.
+    asyncio.run(pipeline.run_pass(s, b"img", "image/jpeg", emit))
+    assert len(calls) == 1

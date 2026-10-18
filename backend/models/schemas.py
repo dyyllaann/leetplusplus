@@ -55,8 +55,17 @@ class Finding(_Strict):
     message: str
 
 
+class Correction(_Strict):
+    region_id: str
+    line: int
+    text: str = Field(description="The line exactly as written on the board, errors included")
+
+
 class AnalysisResult(_Strict):
     findings: list[Finding]
+    transcription_corrections: list[Correction] = Field(
+        description="Lines where the image shows different characters than the transcription"
+    )
 
 
 # --- Call metadata (not a model output) --------------------------------------

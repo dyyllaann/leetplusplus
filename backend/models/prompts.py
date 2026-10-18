@@ -49,6 +49,12 @@ Rules:
 - message states the problem in one or two sentences. Do not write corrected code.
 - line is the transcription line number, or 0 if the finding is not tied to a line.
 - region_id must match a region id from the transcription.
+
+Transcription corrections:
+- If the image clearly shows a line differently from the transcription (dropped or
+  changed characters such as "!=" read as "="), add a correction with the line exactly
+  as written on the board, errors included. Do not correct the candidate's code;
+  correct only the transcription. Leave the list empty when they agree.
 """
 
 

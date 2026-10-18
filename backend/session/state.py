@@ -44,6 +44,8 @@ class Session:
     pass_count: int = 0
     attempts: int = 0  # every pass started, including skipped/failed; numbers log files
     transcription: Transcription | None = None
+    raw_transcription: Transcription | None = None  # Perceptron output before corrections
+    corrected_lines: dict[tuple[str, int], str] = field(default_factory=dict)  # -> transcribed text
     history: list[Transcription] = field(default_factory=list)
     findings: list[TrackedFinding] = field(default_factory=list)
     busy: bool = False
@@ -64,7 +66,9 @@ class Session:
         self.last_pass_at = time.monotonic()
         self.trigger_reason = None
 
-    def apply_pass(self, transcription: Transcription, findings: list[Finding]) -> None:
+    def apply_pass(self, transcription: Transcription, findings: list[Finding],
+                   raw: Transcription | None = None,
+                   corrected_lines: dict[tuple[str, int], str] | None = None) -> None:
         """Record a completed pass. Findings that persist keep their id and status;
         findings no longer reported become resolved."""
         self.pass_count += 1
@@ -72,6 +76,8 @@ class Session:
         self.trigger_reason = None
         self.updated_at = datetime.now(timezone.utc).isoformat()
         self.transcription = transcription
+        self.raw_transcription = raw or transcription
+        self.corrected_lines = corrected_lines or {}
         self.history = (self.history + [transcription])[-HISTORY_LIMIT:]
 
         open_by_key = {finding_key(t.finding): t for t in self.findings if t.status != "resolved"}
@@ -93,6 +99,14 @@ class Session:
             if key not in seen:
                 tracked.status = "resolved"
 
+    def _line_state(self, region_id: str, ln: Any) -> dict[str, Any]:
+        original = self.corrected_lines.get((region_id, ln.n))
+        state = {"n": ln.n, "text": ln.text, "lowConfidenceChars": ln.low_confidence_chars,
+                 "corrected": original is not None}
+        if original is not None:
+            state["transcribedText"] = original
+        return state
+
     def board_state(self) -> dict[str, Any]:
         regions = []
         for r in (self.transcription.regions if self.transcription else []):
@@ -101,8 +115,7 @@ class Session:
                 "id": r.id, "type": r.type,
                 "bbox": {"x": b.x1 / 1000, "y": b.y1 / 1000,
                          "width": (b.x2 - b.x1) / 1000, "height": (b.y2 - b.y1) / 1000},
-                "lines": [{"n": ln.n, "text": ln.text, "lowConfidenceChars": ln.low_confidence_chars}
-                          for ln in r.lines],
+                "lines": [self._line_state(r.id, ln) for ln in r.lines],
             })
         findings = [{
             "id": t.id, "regionId": t.finding.region_id, "line": t.finding.line,

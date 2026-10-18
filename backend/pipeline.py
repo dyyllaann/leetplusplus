@@ -10,7 +10,7 @@ from backend import config
 from backend.models.analyzer import Analyzer, get_analyzer
 from backend.models.call_log import save_call
 from backend.models.transcriber import Transcriber, get_transcriber
-from backend.models.schemas import Transcription
+from backend.models.schemas import Correction, Transcription
 from backend.session.state import Session
 
 Emit = Callable[[dict[str, Any]], Awaitable[None]]
@@ -42,6 +42,25 @@ def normalize_region_ids(t: Transcription) -> Transcription:
     return Transcription(regions=renamed)
 
 
+def apply_corrections(t: Transcription, corrections: list[Correction]
+                      ) -> tuple[Transcription, dict[tuple[str, int], str]]:
+    """Patch lines the analyzer read differently from the image.
+    Returns the patched transcription and {(region_id, line): original text}."""
+    by_key = {(c.region_id, c.line): c.text for c in corrections}
+    originals: dict[tuple[str, int], str] = {}
+    regions = []
+    for r in t.regions:
+        lines = []
+        for ln in r.lines:
+            new_text = by_key.get((r.id, ln.n))
+            if new_text is not None and new_text.strip() != ln.text.strip():
+                originals[(r.id, ln.n)] = ln.text
+                ln = ln.model_copy(update={"text": new_text, "low_confidence_chars": []})
+            lines.append(ln)
+        regions.append(r.model_copy(update={"lines": lines}))
+    return Transcription(regions=regions), originals
+
+
 def board_text(t: Transcription | None) -> list[tuple[str, list[str]]]:
     return [(r.id, [ln.text.strip() for ln in r.lines]) for r in t.regions] if t else []
 
@@ -63,7 +82,7 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         return False
 
     transcription = normalize_region_ids(t_call.parsed)
-    if session.transcription is not None and board_text(transcription) == board_text(session.transcription):
+    if session.raw_transcription is not None and board_text(transcription) == board_text(session.raw_transcription):
         # Same text as last pass: keep current findings, skip the analyzer call.
         session.mark_unchanged_pass()
         await emit({"type": "status", "stage": "idle", "detail": "board text unchanged"})
@@ -76,7 +95,8 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit) -> boo
         await emit({"type": "status", "stage": "error", "detail": f"analysis: {a_call.error}"})
         return False
 
-    session.apply_pass(transcription, a_call.parsed.findings)
+    corrected, originals = apply_corrections(transcription, a_call.parsed.transcription_corrections)
+    session.apply_pass(corrected, a_call.parsed.findings, raw=transcription, corrected_lines=originals)
     await emit(session.board_state())
     await emit({"type": "status", "stage": "idle"})
     return True
