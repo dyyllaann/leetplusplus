@@ -75,3 +75,35 @@ def test_problems_and_debug_page(client):
     ids = [p["id"] for p in client.get("/problems").json()]
     assert "two-sum" in ids
     assert "getUserMedia" in client.get("/debug/camera").text
+
+
+def test_region_ids_are_normalized_by_type_and_position():
+    t = Transcription.model_validate({"regions": [
+        {"id": ",", "type": "code", "bbox": {"x1": 0, "y1": 500, "x2": 10, "y2": 600}, "lines": []},
+        {"id": "code_block", "type": "code", "bbox": {"x1": 0, "y1": 100, "x2": 10, "y2": 200}, "lines": []},
+        {"id": "ex", "type": "examples", "bbox": {"x1": 0, "y1": 300, "x2": 10, "y2": 400}, "lines": []},
+    ]})
+    assert [r.id for r in pipeline.normalize_region_ids(t).regions] == ["code_1", "examples_1", "code_2"]
+
+
+def test_unchanged_board_text_skips_analyzer(monkeypatch, tmp_path):
+    import asyncio
+    from backend.session.state import Session
+
+    calls = []
+
+    class CountingAnalyzer(FakeAnalyzer):
+        def analyze(self, *a):
+            calls.append(1)
+            return super().analyze(*a)
+
+    monkeypatch.setattr(pipeline, "models", lambda: (FakeTranscriber(), CountingAnalyzer()))
+    monkeypatch.setattr("backend.session.state.LOG_ROOT", tmp_path)
+    s = Session(id="s", problem_id="two-sum", problem_text="Two Sum")
+
+    async def emit(e):
+        pass
+
+    for _ in range(3):
+        assert asyncio.run(pipeline.run_pass(s, b"img", "image/png", emit))
+    assert len(calls) == 1 and s.pass_count == 1

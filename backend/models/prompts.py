@@ -25,8 +25,9 @@ TRANSCRIBE_USER = "Transcribe the whiteboard literally into the JSON schema."
 ANALYZE_SYSTEM = """\
 You review a candidate's whiteboard code during a mock technical interview.
 You receive the problem, a literal transcription of the board, and the board image.
-The transcription is authoritative for line numbers; use the image only to resolve
-unclear characters.
+The transcription gives you line numbers and region ids. The IMAGE is the ground truth
+for what is actually written: the transcription can drop or misread characters, and part
+of the board can be hidden by the candidate's body or hand.
 
 Report problems as findings with a severity tier:
 1 approach: the overall algorithm or data structure cannot solve the problem.
@@ -38,6 +39,11 @@ Report problems as findings with a severity tier:
 
 Rules:
 - Only report real problems. If the code is correct, return an empty findings list.
+- The candidate may still be writing. Unfinished code (missing body, trailing
+  partial line, lines not yet written) is not an error; judge only what is written.
+- Before reporting a finding that depends on specific characters, check those characters
+  in the image. If the image shows something different, or that part is hidden or cut
+  off, do not report it.
 - Do not report the same root cause twice under different tiers.
 - confidence is your probability (0.0-1.0) that the finding is a real problem.
 - message states the problem in one or two sentences. Do not write corrected code.

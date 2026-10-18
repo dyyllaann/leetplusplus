@@ -42,6 +42,7 @@ class Session:
     problem_text: str
     gate: FrameGate = field(default_factory=FrameGate)
     pass_count: int = 0
+    attempts: int = 0  # every pass started, including skipped/failed; numbers log files
     transcription: Transcription | None = None
     history: list[Transcription] = field(default_factory=list)
     findings: list[TrackedFinding] = field(default_factory=list)
@@ -58,6 +59,10 @@ class Session:
 
     def due(self, now: float, interval: float) -> bool:
         return self.trigger_reason is not None or now - self.last_pass_at >= interval
+
+    def mark_unchanged_pass(self) -> None:
+        self.last_pass_at = time.monotonic()
+        self.trigger_reason = None
 
     def apply_pass(self, transcription: Transcription, findings: list[Finding]) -> None:
         """Record a completed pass. Findings that persist keep their id and status;
