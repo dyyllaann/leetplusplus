@@ -78,5 +78,928 @@
       "constraints": ["Each range has a start no greater than its end.", "Input ranges may be in any order.", "Touching endpoints count as overlapping."]
     },
     "externalUrl": "https://leetcode.com/problems/merge-intervals/"
+  },
+  {
+    "id": "contains-duplicate",
+    "title": "Contains Duplicate",
+    "difficulty": "Easy",
+    "patterns": ["Array", "Hash set"],
+    "summary": "Detect whether any value occurs more than once.",
+    "prompt": {
+      "description": "Given an integer list, return true if any value appears at least twice and false if every value is distinct.",
+      "examples": [{"input": "values = [1, 2, 3, 1]", "output": "true", "explanation": "The value 1 appears twice."}],
+      "constraints": ["The list may be empty.", "Values may be negative."]
+    },
+    "externalUrl": "https://leetcode.com/problems/contains-duplicate/"
+  },
+  {
+    "id": "valid-anagram",
+    "title": "Valid Anagram",
+    "difficulty": "Easy",
+    "patterns": ["String", "Hash map"],
+    "summary": "Compare character frequencies to determine whether two strings use the same letters.",
+    "prompt": {
+      "description": "Given two lowercase strings, return whether one can be rearranged to form the other.",
+      "examples": [{"input": "first = \"listen\", second = \"silent\"", "output": "true", "explanation": "Both strings have the same character counts."}],
+      "constraints": ["Strings contain lowercase English letters.", "Different lengths cannot be anagrams."]
+    },
+    "externalUrl": "https://leetcode.com/problems/valid-anagram/"
+  },
+  {
+    "id": "product-of-array-except-self",
+    "title": "Product of Array Except Self",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Prefix and suffix"],
+    "summary": "Combine products on either side of each position without dividing.",
+    "prompt": {
+      "description": "Return an array where each position contains the product of every input value except the value at that position. Do not use division.",
+      "examples": [{"input": "values = [1, 2, 3, 4]", "output": "[24, 12, 8, 6]", "explanation": "Each output is the product of the other three values."}],
+      "constraints": ["The output must be computed without division.", "Use O(n) time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/product-of-array-except-self/"
+  },
+  {
+    "id": "maximum-subarray",
+    "title": "Maximum Subarray",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Dynamic programming"],
+    "summary": "Find the contiguous range with the greatest sum.",
+    "prompt": {
+      "description": "Given an integer array, return the largest sum obtainable from any non-empty contiguous subarray.",
+      "examples": [{"input": "values = [-2, 1, -3, 4, -1, 2, 1, -5, 4]", "output": "6", "explanation": "The range [4, -1, 2, 1] has sum 6."}],
+      "constraints": ["The array is non-empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/maximum-subarray/"
+  },
+  {
+    "id": "maximum-product-subarray",
+    "title": "Maximum Product Subarray",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Dynamic programming"],
+    "summary": "Track how negative values can turn a small product into a large one.",
+    "prompt": {
+      "description": "Given an integer array, return the largest product of any non-empty contiguous subarray.",
+      "examples": [{"input": "values = [2, 3, -2, 4]", "output": "6", "explanation": "The subarray [2, 3] has product 6."}],
+      "constraints": ["The array is non-empty.", "Values may be negative or zero."]
+    },
+    "externalUrl": "https://leetcode.com/problems/maximum-product-subarray/"
+  },
+  {
+    "id": "find-minimum-in-rotated-sorted-array",
+    "title": "Find Minimum in Rotated Sorted Array",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Binary search"],
+    "summary": "Use the rotation boundary to search a sorted array efficiently.",
+    "prompt": {
+      "description": "An ascending array of distinct values was rotated an unknown number of times. Return its minimum value in logarithmic time.",
+      "examples": [{"input": "values = [4, 5, 6, 7, 0, 1, 2]", "output": "0", "explanation": "The rotation places the minimum at index 4."}],
+      "constraints": ["The array is non-empty.", "All values are distinct.", "Aim for O(log n) time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/"
+  },
+  {
+    "id": "search-in-rotated-sorted-array",
+    "title": "Search in Rotated Sorted Array",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Binary search"],
+    "summary": "Search a rotated sorted sequence by identifying its ordered half.",
+    "prompt": {
+      "description": "Search for a target in an ascending array that was rotated at an unknown pivot. Return its index, or -1 if absent.",
+      "examples": [{"input": "values = [4, 5, 6, 7, 0, 1, 2], target = 0", "output": "4", "explanation": "The target is at index 4."}],
+      "constraints": ["All array values are distinct.", "Aim for O(log n) time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/search-in-rotated-sorted-array/"
+  },
+  {
+    "id": "3sum",
+    "title": "3Sum",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Two pointers"],
+    "summary": "Find unique triples whose values sum to zero.",
+    "prompt": {
+      "description": "Return every unique triplet of distinct indices whose values sum to zero. Do not include duplicate triplets in the result.",
+      "examples": [{"input": "values = [-1, 0, 1, 2, -1, -4]", "output": "[[-1, -1, 2], [-1, 0, 1]]", "explanation": "These are the unique value triplets summing to zero."}],
+      "constraints": ["A triplet must use three different positions.", "The result must not contain duplicate triplets."]
+    },
+    "externalUrl": "https://leetcode.com/problems/3sum/"
+  },
+  {
+    "id": "container-with-most-water",
+    "title": "Container With Most Water",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Two pointers"],
+    "summary": "Choose two boundaries that hold the greatest possible amount of water.",
+    "prompt": {
+      "description": "Each array value is the height of a vertical line. Choose two lines that, together with the x-axis, contain the maximum area.",
+      "examples": [{"input": "heights = [1, 8, 6, 2, 5, 4, 8, 3, 7]", "output": "49", "explanation": "The lines at indices 1 and 8 hold area 7 * 7."}],
+      "constraints": ["Choose two different indices.", "The area is limited by the shorter line."]
+    },
+    "externalUrl": "https://leetcode.com/problems/container-with-most-water/"
+  },
+  {
+    "id": "sum-of-two-integers",
+    "title": "Sum of Two Integers",
+    "difficulty": "Medium",
+    "patterns": ["Bit manipulation"],
+    "summary": "Use bitwise operations to add integers without arithmetic addition.",
+    "prompt": {
+      "description": "Return the sum of two integers without using the plus or minus operators.",
+      "examples": [{"input": "a = 3, b = 5", "output": "8", "explanation": "Combine the sum bits and carry bits using bitwise operations."}],
+      "constraints": ["Do not use the + or - operators."]
+    },
+    "externalUrl": "https://leetcode.com/problems/sum-of-two-integers/"
+  },
+  {
+    "id": "number-of-1-bits",
+    "title": "Number of 1 Bits",
+    "difficulty": "Easy",
+    "patterns": ["Bit manipulation"],
+    "summary": "Count the set bits in an unsigned integer.",
+    "prompt": {
+      "description": "Given an unsigned integer, return the number of bits set to 1 in its binary representation.",
+      "examples": [{"input": "n = 11", "output": "3", "explanation": "The binary representation is 1011."}],
+      "constraints": ["The input is treated as an unsigned 32-bit integer."]
+    },
+    "externalUrl": "https://leetcode.com/problems/number-of-1-bits/"
+  },
+  {
+    "id": "counting-bits",
+    "title": "Counting Bits",
+    "difficulty": "Easy",
+    "patterns": ["Bit manipulation", "Dynamic programming"],
+    "summary": "Build bit counts for every number using results from smaller values.",
+    "prompt": {
+      "description": "Given a non-negative integer n, return an array where each index i contains the number of set bits in i.",
+      "examples": [{"input": "n = 5", "output": "[0, 1, 1, 2, 1, 2]", "explanation": "These are the set-bit counts for values 0 through 5."}],
+      "constraints": ["0 <= n <= 100000.", "Aim for O(n) time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/counting-bits/"
+  },
+  {
+    "id": "missing-number",
+    "title": "Missing Number",
+    "difficulty": "Easy",
+    "patterns": ["Array", "Bit manipulation"],
+    "summary": "Recover the absent value from a complete integer range.",
+    "prompt": {
+      "description": "An array contains distinct values from 0 through n with exactly one value missing. Return the missing value.",
+      "examples": [{"input": "values = [3, 0, 1]", "output": "2", "explanation": "The range 0 through 3 is missing 2."}],
+      "constraints": ["The array contains n distinct values from [0, n]."]
+    },
+    "externalUrl": "https://leetcode.com/problems/missing-number/"
+  },
+  {
+    "id": "reverse-bits",
+    "title": "Reverse Bits",
+    "difficulty": "Easy",
+    "patterns": ["Bit manipulation"],
+    "summary": "Reverse the order of the bits in a fixed-width integer.",
+    "prompt": {
+      "description": "Reverse the bits of a 32-bit unsigned integer and return the resulting unsigned value.",
+      "examples": [{"input": "n = 00000010100101000001111010011100", "output": "964176192", "explanation": "The output is the integer represented by the reversed 32-bit sequence."}],
+      "constraints": ["Process exactly 32 bits."]
+    },
+    "externalUrl": "https://leetcode.com/problems/reverse-bits/"
+  },
+  {
+    "id": "climbing-stairs",
+    "title": "Climbing Stairs",
+    "difficulty": "Easy",
+    "patterns": ["Dynamic programming"],
+    "summary": "Count paths formed by taking one or two steps at a time.",
+    "prompt": {
+      "description": "How many distinct ways can you reach step n if each move climbs either one or two steps?",
+      "examples": [{"input": "n = 4", "output": "5", "explanation": "There are five ordered combinations of one- and two-step moves."}],
+      "constraints": ["1 <= n <= 45."]
+    },
+    "externalUrl": "https://leetcode.com/problems/climbing-stairs/"
+  },
+  {
+    "id": "coin-change",
+    "title": "Coin Change",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming"],
+    "summary": "Find the fewest coins needed to make a target amount.",
+    "prompt": {
+      "description": "Given coin denominations and an amount, return the minimum number of coins needed to make that amount, or -1 if it cannot be made.",
+      "examples": [{"input": "coins = [1, 2, 5], amount = 11", "output": "3", "explanation": "The amount can be made with 5 + 5 + 1."}],
+      "constraints": ["Each denomination is a positive integer.", "You may use each denomination any number of times."]
+    },
+    "externalUrl": "https://leetcode.com/problems/coin-change/"
+  },
+  {
+    "id": "longest-increasing-subsequence",
+    "title": "Longest Increasing Subsequence",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming", "Binary search"],
+    "summary": "Find the length of the longest strictly increasing subsequence.",
+    "prompt": {
+      "description": "Given an integer array, return the length of its longest strictly increasing subsequence. The selected values need not be adjacent.",
+      "examples": [{"input": "values = [10, 9, 2, 5, 3, 7, 101, 18]", "output": "4", "explanation": "One longest subsequence is [2, 3, 7, 101]."}],
+      "constraints": ["The array may contain duplicate values."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-increasing-subsequence/"
+  },
+  {
+    "id": "longest-common-subsequence",
+    "title": "Longest Common Subsequence",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming", "String"],
+    "summary": "Compare prefixes to find the longest sequence shared by two strings.",
+    "prompt": {
+      "description": "Given two strings, return the length of their longest subsequence present in both. Characters in a subsequence keep their order but need not be adjacent.",
+      "examples": [{"input": "first = \"abcde\", second = \"ace\"", "output": "3", "explanation": "\"ace\" is a common subsequence."}],
+      "constraints": ["Strings contain lowercase English letters."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-common-subsequence/"
+  },
+  {
+    "id": "word-break",
+    "title": "Word Break",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming", "String"],
+    "summary": "Determine whether a string can be segmented into dictionary words.",
+    "prompt": {
+      "description": "Given a string and a dictionary of words, return whether the string can be split into a space-separated sequence of one or more dictionary words.",
+      "examples": [{"input": "text = \"leetcode\", words = [\"leet\", \"code\"]", "output": "true", "explanation": "The string splits into \"leet\" and \"code\"."}],
+      "constraints": ["A dictionary word may be reused."]
+    },
+    "externalUrl": "https://leetcode.com/problems/word-break/"
+  },
+  {
+    "id": "combination-sum",
+    "title": "Combination Sum",
+    "difficulty": "Medium",
+    "patterns": ["Backtracking", "Array"],
+    "summary": "Enumerate unique combinations that reach a target using reusable candidates.",
+    "prompt": {
+      "description": "Return all unique combinations of candidate values that sum to a target. A candidate may be chosen repeatedly.",
+      "examples": [{"input": "candidates = [2, 3, 6, 7], target = 7", "output": "[[2, 2, 3], [7]]", "explanation": "Both combinations total 7."}],
+      "constraints": ["Candidate values are distinct positive integers.", "The result must not contain duplicate combinations."]
+    },
+    "externalUrl": "https://leetcode.com/problems/combination-sum/"
+  },
+  {
+    "id": "house-robber",
+    "title": "House Robber",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming"],
+    "summary": "Maximize a sum while never choosing adjacent values.",
+    "prompt": {
+      "description": "Each value is the amount of money in a house along a street. Return the most money that can be taken without taking from adjacent houses.",
+      "examples": [{"input": "values = [2, 7, 9, 3, 1]", "output": "12", "explanation": "Taking houses with values 2, 9, and 1 totals 12."}],
+      "constraints": ["Values are non-negative."]
+    },
+    "externalUrl": "https://leetcode.com/problems/house-robber/"
+  },
+  {
+    "id": "house-robber-ii",
+    "title": "House Robber II",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming"],
+    "summary": "Adapt the non-adjacent maximum when the first and last houses are neighbors.",
+    "prompt": {
+      "description": "Houses form a circle, so the first and last are adjacent. Return the maximum amount that can be taken without choosing neighboring houses.",
+      "examples": [{"input": "values = [2, 3, 2]", "output": "3", "explanation": "Only the middle house can be chosen alongside neither neighbor."}],
+      "constraints": ["Values are non-negative."]
+    },
+    "externalUrl": "https://leetcode.com/problems/house-robber-ii/"
+  },
+  {
+    "id": "decode-ways",
+    "title": "Decode Ways",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming", "String"],
+    "summary": "Count valid letter decodings while accounting for zeroes and two-digit codes.",
+    "prompt": {
+      "description": "Digits map to letters 1 through 26. Return the number of ways a digit string can be decoded, where a leading zero or an invalid zero pairing is not allowed.",
+      "examples": [{"input": "digits = \"226\"", "output": "3", "explanation": "The decodings correspond to 2|2|6, 22|6, and 2|26."}],
+      "constraints": ["The string contains only digits.", "The answer fits in a 32-bit signed integer."]
+    },
+    "externalUrl": "https://leetcode.com/problems/decode-ways/"
+  },
+  {
+    "id": "unique-paths",
+    "title": "Unique Paths",
+    "difficulty": "Medium",
+    "patterns": ["Dynamic programming", "Math"],
+    "summary": "Count routes through a grid when movement is limited to right and down.",
+    "prompt": {
+      "description": "A robot starts at the top-left of an m by n grid and may move only right or down. Return the number of distinct ways to reach the bottom-right.",
+      "examples": [{"input": "m = 3, n = 7", "output": "28", "explanation": "There are 28 distinct right/down paths."}],
+      "constraints": ["1 <= m, n <= 100."]
+    },
+    "externalUrl": "https://leetcode.com/problems/unique-paths/"
+  },
+  {
+    "id": "jump-game",
+    "title": "Jump Game",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Greedy"],
+    "summary": "Track the farthest reachable index to determine whether the end is accessible.",
+    "prompt": {
+      "description": "Each value gives the maximum forward jump length from that index. Return whether the final index is reachable from the first.",
+      "examples": [{"input": "jumps = [2, 3, 1, 1, 4]", "output": "true", "explanation": "A sequence of jumps can reach the last index."}],
+      "constraints": ["The array contains at least one non-negative value."]
+    },
+    "externalUrl": "https://leetcode.com/problems/jump-game/"
+  },
+  {
+    "id": "clone-graph",
+    "title": "Clone Graph",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Depth-first search"],
+    "summary": "Deep-copy a graph while preserving its nodes and neighbor relationships.",
+    "prompt": {
+      "description": "Given a reference to a node in a connected undirected graph, create and return a deep copy of the entire graph.",
+      "examples": [{"input": "adjacency = [[2, 4], [1, 3], [2, 4], [1, 3]]", "output": "A deep copy with the same adjacency", "explanation": "Every original node and edge is reproduced with new nodes."}],
+      "constraints": ["The graph may contain cycles.", "Node values are unique."]
+    },
+    "externalUrl": "https://leetcode.com/problems/clone-graph/"
+  },
+  {
+    "id": "course-schedule",
+    "title": "Course Schedule",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Topological sort"],
+    "summary": "Detect whether course prerequisites contain a directed cycle.",
+    "prompt": {
+      "description": "Given a course count and prerequisite pairs, determine whether all courses can be completed.",
+      "examples": [{"input": "numCourses = 2, prerequisites = [[1, 0]]", "output": "true", "explanation": "Course 0 can be taken before course 1."}],
+      "constraints": ["A pair [a, b] means b must be completed before a.", "Prerequisites may form cycles."]
+    },
+    "externalUrl": "https://leetcode.com/problems/course-schedule/"
+  },
+  {
+    "id": "pacific-atlantic-water-flow",
+    "title": "Pacific Atlantic Water Flow",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Depth-first search", "Matrix"],
+    "summary": "Find cells from which water can flow to both opposite ocean borders.",
+    "prompt": {
+      "description": "Given a height grid, return all cells from which water can flow to both the Pacific and Atlantic edges. Water can move to a neighboring cell of equal or lower height.",
+      "examples": [{"input": "heights = [[1, 2], [4, 3]]", "output": "[[0, 1], [1, 0], [1, 1]]", "explanation": "Each listed cell has a downhill or level route to both oceans."}],
+      "constraints": ["The grid is non-empty.", "Return each qualifying coordinate once."]
+    },
+    "externalUrl": "https://leetcode.com/problems/pacific-atlantic-water-flow/"
+  },
+  {
+    "id": "number-of-islands",
+    "title": "Number of Islands",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Depth-first search", "Matrix"],
+    "summary": "Count connected land components in a grid.",
+    "prompt": {
+      "description": "Given a grid of land ('1') and water ('0'), count the islands. Land connects horizontally or vertically.",
+      "examples": [{"input": "grid = [[\"1\", \"1\", \"0\"], [\"0\", \"1\", \"0\"], [\"1\", \"0\", \"1\"]]", "output": "3", "explanation": "There are three separate connected groups of land."}],
+      "constraints": ["The grid may be rectangular.", "Diagonal adjacency does not connect land."]
+    },
+    "externalUrl": "https://leetcode.com/problems/number-of-islands/"
+  },
+  {
+    "id": "longest-consecutive-sequence",
+    "title": "Longest Consecutive Sequence",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Hash set"],
+    "summary": "Find the longest run of consecutive values without sorting.",
+    "prompt": {
+      "description": "Given an unsorted integer array, return the length of the longest sequence of consecutive values. Values need not be adjacent in the input.",
+      "examples": [{"input": "values = [100, 4, 200, 1, 3, 2]", "output": "4", "explanation": "The sequence 1, 2, 3, 4 has length 4."}],
+      "constraints": ["Aim for O(n) time."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-consecutive-sequence/"
+  },
+  {
+    "id": "alien-dictionary",
+    "title": "Alien Dictionary",
+    "difficulty": "Hard",
+    "patterns": ["Graph", "Topological sort"],
+    "summary": "Infer a character ordering from words sorted in an unknown alphabet.",
+    "prompt": {
+      "description": "Given a sorted list of words from an unknown alphabet, return a valid ordering of its characters, or an empty string if the ordering is invalid or impossible.",
+      "examples": [{"input": "words = [\"wrt\", \"wrf\", \"er\", \"ett\", \"rftt\"]", "output": "\"wertf\"", "explanation": "The word order implies a consistent precedence between characters."}],
+      "constraints": ["A character order must respect every adjacent-word distinction.", "A longer word cannot precede its own strict prefix."]
+    },
+    "externalUrl": "https://leetcode.com/problems/alien-dictionary/"
+  },
+  {
+    "id": "graph-valid-tree",
+    "title": "Graph Valid Tree",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Union-find"],
+    "summary": "Determine whether an undirected graph is connected and acyclic.",
+    "prompt": {
+      "description": "Given n nodes labeled 0 through n-1 and undirected edges, determine whether those edges form a valid tree.",
+      "examples": [{"input": "n = 5, edges = [[0, 1], [0, 2], [0, 3], [1, 4]]", "output": "true", "explanation": "All nodes are connected and the graph has no cycle."}],
+      "constraints": ["A valid tree is connected and contains no cycles."]
+    },
+    "externalUrl": "https://leetcode.com/problems/graph-valid-tree/"
+  },
+  {
+    "id": "number-of-connected-components-in-an-undirected-graph",
+    "title": "Number of Connected Components in an Undirected Graph",
+    "difficulty": "Medium",
+    "patterns": ["Graph", "Union-find"],
+    "summary": "Count the disconnected groups of vertices.",
+    "prompt": {
+      "description": "Given n vertices and undirected edges, return the number of connected components.",
+      "examples": [{"input": "n = 5, edges = [[0, 1], [1, 2], [3, 4]]", "output": "2", "explanation": "The vertices form two connected groups."}],
+      "constraints": ["Vertices are labeled from 0 through n-1."]
+    },
+    "externalUrl": "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/"
+  },
+  {
+    "id": "insert-interval",
+    "title": "Insert Interval",
+    "difficulty": "Medium",
+    "patterns": ["Intervals"],
+    "summary": "Insert a range into sorted, non-overlapping intervals and merge as needed.",
+    "prompt": {
+      "description": "Given sorted non-overlapping intervals and one new interval, insert it and merge any overlaps. Return the resulting intervals in order.",
+      "examples": [{"input": "intervals = [[1, 3], [6, 9]], newInterval = [2, 5]", "output": "[[1, 5], [6, 9]]", "explanation": "The new range overlaps with [1, 3]."}],
+      "constraints": ["Input intervals are sorted by start.", "Input intervals do not overlap."]
+    },
+    "externalUrl": "https://leetcode.com/problems/insert-interval/"
+  },
+  {
+    "id": "non-overlapping-intervals",
+    "title": "Non-overlapping Intervals",
+    "difficulty": "Medium",
+    "patterns": ["Intervals", "Greedy"],
+    "summary": "Remove as few ranges as possible to leave a non-overlapping set.",
+    "prompt": {
+      "description": "Given intervals, return the minimum number that must be removed so the remaining intervals do not overlap.",
+      "examples": [{"input": "intervals = [[1, 2], [2, 3], [3, 4], [1, 3]]", "output": "1", "explanation": "Removing [1, 3] leaves non-overlapping intervals."}],
+      "constraints": ["Intervals that touch at an endpoint do not overlap."]
+    },
+    "externalUrl": "https://leetcode.com/problems/non-overlapping-intervals/"
+  },
+  {
+    "id": "meeting-rooms",
+    "title": "Meeting Rooms",
+    "difficulty": "Easy",
+    "patterns": ["Intervals", "Sorting"],
+    "summary": "Check whether any scheduled meetings overlap.",
+    "prompt": {
+      "description": "Given meeting time intervals, return whether a person can attend every meeting without conflicts.",
+      "examples": [{"input": "intervals = [[0, 30], [5, 10], [15, 20]]", "output": "false", "explanation": "The first meeting overlaps with both later meetings."}],
+      "constraints": ["Each interval has a start earlier than its end."]
+    },
+    "externalUrl": "https://leetcode.com/problems/meeting-rooms/"
+  },
+  {
+    "id": "meeting-rooms-ii",
+    "title": "Meeting Rooms II",
+    "difficulty": "Medium",
+    "patterns": ["Intervals", "Heap"],
+    "summary": "Find the minimum number of rooms needed for overlapping meetings.",
+    "prompt": {
+      "description": "Given meeting start and end times, return the minimum number of conference rooms required to hold all meetings.",
+      "examples": [{"input": "intervals = [[0, 30], [5, 10], [15, 20]]", "output": "2", "explanation": "At most two meetings overlap at once."}],
+      "constraints": ["Meeting intervals may be provided in any order."]
+    },
+    "externalUrl": "https://leetcode.com/problems/meeting-rooms-ii/"
+  },
+  {
+    "id": "reverse-linked-list",
+    "title": "Reverse Linked List",
+    "difficulty": "Easy",
+    "patterns": ["Linked list"],
+    "summary": "Reverse the direction of every link in a singly linked list.",
+    "prompt": {
+      "description": "Given the head of a singly linked list, reverse the list and return its new head.",
+      "examples": [{"input": "head = [1, 2, 3, 4, 5]", "output": "[5, 4, 3, 2, 1]", "explanation": "The node order is reversed."}],
+      "constraints": ["The list may be empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/reverse-linked-list/"
+  },
+  {
+    "id": "linked-list-cycle",
+    "title": "Linked List Cycle",
+    "difficulty": "Easy",
+    "patterns": ["Linked list", "Two pointers"],
+    "summary": "Detect whether following next pointers eventually revisits a node.",
+    "prompt": {
+      "description": "Given a linked-list head, return whether the list contains a cycle.",
+      "examples": [{"input": "head = [3, 2, 0, -4], cycleEntry = index 1", "output": "true", "explanation": "The final node links back to the node at index 1."}],
+      "constraints": ["The list may be empty.", "Do not modify the list."]
+    },
+    "externalUrl": "https://leetcode.com/problems/linked-list-cycle/"
+  },
+  {
+    "id": "merge-two-sorted-lists",
+    "title": "Merge Two Sorted Lists",
+    "difficulty": "Easy",
+    "patterns": ["Linked list", "Two pointers"],
+    "summary": "Merge two sorted linked lists into one sorted list.",
+    "prompt": {
+      "description": "Given the heads of two sorted singly linked lists, merge them into one sorted list and return its head.",
+      "examples": [{"input": "list1 = [1, 2, 4], list2 = [1, 3, 4]", "output": "[1, 1, 2, 3, 4, 4]", "explanation": "All nodes appear in ascending order."}],
+      "constraints": ["Either input list may be empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/merge-two-sorted-lists/"
+  },
+  {
+    "id": "merge-k-sorted-lists",
+    "title": "Merge K Sorted Lists",
+    "difficulty": "Hard",
+    "patterns": ["Linked list", "Heap", "Divide and conquer"],
+    "summary": "Combine many sorted linked lists into a single sorted list.",
+    "prompt": {
+      "description": "Given an array of k sorted linked lists, merge them into one sorted linked list and return its head.",
+      "examples": [{"input": "lists = [[1, 4, 5], [1, 3, 4], [2, 6]]", "output": "[1, 1, 2, 3, 4, 4, 5, 6]", "explanation": "All values are merged in ascending order."}],
+      "constraints": ["The array may contain empty lists."]
+    },
+    "externalUrl": "https://leetcode.com/problems/merge-k-sorted-lists/"
+  },
+  {
+    "id": "remove-nth-node-from-end-of-list",
+    "title": "Remove Nth Node From End of List",
+    "difficulty": "Medium",
+    "patterns": ["Linked list", "Two pointers"],
+    "summary": "Remove a node counted from the end of a singly linked list.",
+    "prompt": {
+      "description": "Given a list head and integer n, remove the nth node from the end and return the list head.",
+      "examples": [{"input": "head = [1, 2, 3, 4, 5], n = 2", "output": "[1, 2, 3, 5]", "explanation": "The node with value 4 is removed."}],
+      "constraints": ["n is valid for the list length.", "Aim for one pass."]
+    },
+    "externalUrl": "https://leetcode.com/problems/remove-nth-node-from-end-of-list/"
+  },
+  {
+    "id": "reorder-list",
+    "title": "Reorder List",
+    "difficulty": "Medium",
+    "patterns": ["Linked list", "Two pointers"],
+    "summary": "Interleave nodes from the start and end of a linked list.",
+    "prompt": {
+      "description": "Reorder a list in place from L0 -> L1 -> ... -> Ln to L0 -> Ln -> L1 -> Ln-1 -> ... .",
+      "examples": [{"input": "head = [1, 2, 3, 4]", "output": "[1, 4, 2, 3]", "explanation": "Nodes from each end are alternated."}],
+      "constraints": ["Do not change node values.", "Reorder nodes in place."]
+    },
+    "externalUrl": "https://leetcode.com/problems/reorder-list/"
+  },
+  {
+    "id": "set-matrix-zeroes",
+    "title": "Set Matrix Zeroes",
+    "difficulty": "Medium",
+    "patterns": ["Matrix", "Array"],
+    "summary": "Zero entire rows and columns containing an original zero.",
+    "prompt": {
+      "description": "If a matrix cell is zero, set its entire row and column to zero. Perform the transformation in place.",
+      "examples": [{"input": "matrix = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]", "output": "[[1, 0, 1], [0, 0, 0], [1, 0, 1]]", "explanation": "The middle row and column are set to zero."}],
+      "constraints": ["Zeroes introduced during the transformation must not trigger extra changes."]
+    },
+    "externalUrl": "https://leetcode.com/problems/set-matrix-zeroes/"
+  },
+  {
+    "id": "spiral-matrix",
+    "title": "Spiral Matrix",
+    "difficulty": "Medium",
+    "patterns": ["Matrix", "Simulation"],
+    "summary": "Read matrix entries by spiraling inward from the outer boundary.",
+    "prompt": {
+      "description": "Given a matrix, return all its elements in clockwise spiral order.",
+      "examples": [{"input": "matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]", "output": "[1, 2, 3, 6, 9, 8, 7, 4, 5]", "explanation": "Traverse the perimeter before moving inward."}],
+      "constraints": ["The matrix may have different numbers of rows and columns."]
+    },
+    "externalUrl": "https://leetcode.com/problems/spiral-matrix/"
+  },
+  {
+    "id": "rotate-image",
+    "title": "Rotate Image",
+    "difficulty": "Medium",
+    "patterns": ["Matrix", "Math"],
+    "summary": "Rotate a square matrix clockwise without allocating another matrix.",
+    "prompt": {
+      "description": "Rotate an n by n matrix 90 degrees clockwise in place.",
+      "examples": [{"input": "matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]", "output": "[[7, 4, 1], [8, 5, 2], [9, 6, 3]]", "explanation": "The outer columns and rows rotate clockwise."}],
+      "constraints": ["Modify the matrix in place."]
+    },
+    "externalUrl": "https://leetcode.com/problems/rotate-image/"
+  },
+  {
+    "id": "word-search",
+    "title": "Word Search",
+    "difficulty": "Medium",
+    "patterns": ["Backtracking", "Matrix"],
+    "summary": "Trace a word through adjacent cells without reusing a cell.",
+    "prompt": {
+      "description": "Given a character grid and a word, return whether the word can be formed by horizontally or vertically adjacent cells without using any cell more than once.",
+      "examples": [{"input": "board = [[\"A\", \"B\"], [\"C\", \"D\"]], word = \"ABDC\"", "output": "true", "explanation": "A valid path visits adjacent cells and spells the word."}],
+      "constraints": ["A cell may be used at most once in a path."]
+    },
+    "externalUrl": "https://leetcode.com/problems/word-search/"
+  },
+  {
+    "id": "longest-substring-without-repeating-characters",
+    "title": "Longest Substring Without Repeating Characters",
+    "difficulty": "Medium",
+    "patterns": ["String", "Sliding window"],
+    "summary": "Find the longest contiguous substring with all distinct characters.",
+    "prompt": {
+      "description": "Given a string, return the length of its longest substring containing no repeated characters.",
+      "examples": [{"input": "text = \"abcabcbb\"", "output": "3", "explanation": "\"abc\" is a longest substring without repetition."}],
+      "constraints": ["The input may be empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-substring-without-repeating-characters/"
+  },
+  {
+    "id": "longest-repeating-character-replacement",
+    "title": "Longest Repeating Character Replacement",
+    "difficulty": "Medium",
+    "patterns": ["String", "Sliding window"],
+    "summary": "Find the longest substring that can be made uniform with a limited number of replacements.",
+    "prompt": {
+      "description": "Given an uppercase string and integer k, return the length of the longest substring that can become all one character after replacing at most k characters.",
+      "examples": [{"input": "text = \"AABABBA\", k = 1", "output": "4", "explanation": "Replacing one character makes a length-four substring uniform."}],
+      "constraints": ["The string contains uppercase English letters.", "0 <= k <= text.length."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-repeating-character-replacement/"
+  },
+  {
+    "id": "minimum-window-substring",
+    "title": "Minimum Window Substring",
+    "difficulty": "Hard",
+    "patterns": ["String", "Sliding window"],
+    "summary": "Find the shortest substring containing every required character with multiplicity.",
+    "prompt": {
+      "description": "Given strings s and t, return the shortest substring of s containing every character in t, including repeated occurrences, or an empty string if none exists.",
+      "examples": [{"input": "s = \"ADOBECODEBANC\", t = \"ABC\"", "output": "\"BANC\"", "explanation": "\"BANC\" is the shortest substring containing A, B, and C."}],
+      "constraints": ["The answer is unique if one exists."]
+    },
+    "externalUrl": "https://leetcode.com/problems/minimum-window-substring/"
+  },
+  {
+    "id": "group-anagrams",
+    "title": "Group Anagrams",
+    "difficulty": "Medium",
+    "patterns": ["String", "Hash map"],
+    "summary": "Group words that share the same character frequencies.",
+    "prompt": {
+      "description": "Given a list of strings, group together the strings that are anagrams of one another.",
+      "examples": [{"input": "words = [\"eat\", \"tea\", \"tan\", \"ate\", \"nat\", \"bat\"]", "output": "[[\"eat\", \"tea\", \"ate\"], [\"tan\", \"nat\"], [\"bat\"]]", "explanation": "Each group contains words with matching character counts."}],
+      "constraints": ["The order of groups and their contents may vary."]
+    },
+    "externalUrl": "https://leetcode.com/problems/group-anagrams/"
+  },
+  {
+    "id": "valid-palindrome",
+    "title": "Valid Palindrome",
+    "difficulty": "Easy",
+    "patterns": ["String", "Two pointers"],
+    "summary": "Check whether normalized alphanumeric characters read the same in both directions.",
+    "prompt": {
+      "description": "Return whether a string is a palindrome after ignoring non-alphanumeric characters and letter case.",
+      "examples": [{"input": "text = \"A man, a plan, a canal: Panama\"", "output": "true", "explanation": "Ignoring punctuation and case gives a palindrome."}],
+      "constraints": ["An empty normalized string is a palindrome."]
+    },
+    "externalUrl": "https://leetcode.com/problems/valid-palindrome/"
+  },
+  {
+    "id": "longest-palindromic-substring",
+    "title": "Longest Palindromic Substring",
+    "difficulty": "Medium",
+    "patterns": ["String", "Dynamic programming"],
+    "summary": "Find the longest contiguous substring that reads identically in both directions.",
+    "prompt": {
+      "description": "Given a string, return its longest palindromic substring.",
+      "examples": [{"input": "text = \"babad\"", "output": "\"bab\"", "explanation": "\"aba\" is also a valid longest answer."}],
+      "constraints": ["The string is non-empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/longest-palindromic-substring/"
+  },
+  {
+    "id": "palindromic-substrings",
+    "title": "Palindromic Substrings",
+    "difficulty": "Medium",
+    "patterns": ["String", "Dynamic programming"],
+    "summary": "Count every contiguous substring that is a palindrome.",
+    "prompt": {
+      "description": "Given a string, return the number of its non-empty substrings that are palindromes.",
+      "examples": [{"input": "text = \"aaa\"", "output": "6", "explanation": "There are three single-character, two length-two, and one length-three palindromes."}],
+      "constraints": ["Substrings are identified by their start and end positions."]
+    },
+    "externalUrl": "https://leetcode.com/problems/palindromic-substrings/"
+  },
+  {
+    "id": "encode-and-decode-strings",
+    "title": "Encode and Decode Strings",
+    "difficulty": "Medium",
+    "patterns": ["String", "Design"],
+    "summary": "Design a reversible encoding for a list of strings, including strings with delimiters.",
+    "prompt": {
+      "description": "Design encode and decode functions that convert a list of strings into one string and restore the original list exactly.",
+      "examples": [{"input": "[\"hello\", \"world\"]", "output": "decode(encode(input)) = [\"hello\", \"world\"]", "explanation": "The encoding must preserve boundaries and arbitrary string contents."}],
+      "constraints": ["Strings may contain any characters.", "Decoding must reverse the encoding without ambiguity."]
+    },
+    "externalUrl": "https://leetcode.com/problems/encode-and-decode-strings/"
+  },
+  {
+    "id": "maximum-depth-of-binary-tree",
+    "title": "Maximum Depth of Binary Tree",
+    "difficulty": "Easy",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Find the number of nodes on the longest root-to-leaf path.",
+    "prompt": {
+      "description": "Given the root of a binary tree, return its maximum depth.",
+      "examples": [{"input": "root = [3, 9, 20, null, null, 15, 7]", "output": "3", "explanation": "The deepest root-to-leaf paths contain three nodes."}],
+      "constraints": ["An empty tree has depth 0."]
+    },
+    "externalUrl": "https://leetcode.com/problems/maximum-depth-of-binary-tree/"
+  },
+  {
+    "id": "same-tree",
+    "title": "Same Tree",
+    "difficulty": "Easy",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Compare two trees for identical structure and values.",
+    "prompt": {
+      "description": "Given the roots of two binary trees, return whether they have the same structure and equal values at every corresponding node.",
+      "examples": [{"input": "p = [1, 2, 3], q = [1, 2, 3]", "output": "true", "explanation": "Both trees have matching values and structure."}],
+      "constraints": ["Either tree may be empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/same-tree/"
+  },
+  {
+    "id": "invert-binary-tree",
+    "title": "Invert Binary Tree",
+    "difficulty": "Easy",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Swap the left and right subtrees at every node.",
+    "prompt": {
+      "description": "Given the root of a binary tree, invert it and return the root.",
+      "examples": [{"input": "root = [4, 2, 7, 1, 3, 6, 9]", "output": "[4, 7, 2, 9, 6, 3, 1]", "explanation": "Every node's left and right children are exchanged."}],
+      "constraints": ["The tree may be empty."]
+    },
+    "externalUrl": "https://leetcode.com/problems/invert-binary-tree/"
+  },
+  {
+    "id": "binary-tree-maximum-path-sum",
+    "title": "Binary Tree Maximum Path Sum",
+    "difficulty": "Hard",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Find the highest-sum path between any two nodes in a binary tree.",
+    "prompt": {
+      "description": "Given a binary tree, return the maximum sum of values along any non-empty path. A path may start and end at any nodes.",
+      "examples": [{"input": "root = [1, 2, 3]", "output": "6", "explanation": "The path 2 -> 1 -> 3 has sum 6."}],
+      "constraints": ["A path follows parent-child edges and contains at least one node."]
+    },
+    "externalUrl": "https://leetcode.com/problems/binary-tree-maximum-path-sum/"
+  },
+  {
+    "id": "binary-tree-level-order-traversal",
+    "title": "Binary Tree Level Order Traversal",
+    "difficulty": "Medium",
+    "patterns": ["Tree", "Breadth-first search"],
+    "summary": "Return node values grouped by their depth in the tree.",
+    "prompt": {
+      "description": "Given a binary tree root, return its values level by level from left to right.",
+      "examples": [{"input": "root = [3, 9, 20, null, null, 15, 7]", "output": "[[3], [9, 20], [15, 7]]", "explanation": "Each inner list contains one tree level."}],
+      "constraints": ["An empty tree produces an empty result."]
+    },
+    "externalUrl": "https://leetcode.com/problems/binary-tree-level-order-traversal/"
+  },
+  {
+    "id": "serialize-and-deserialize-binary-tree",
+    "title": "Serialize and Deserialize Binary Tree",
+    "difficulty": "Hard",
+    "patterns": ["Tree", "Breadth-first search", "Design"],
+    "summary": "Design reversible operations that preserve a binary tree's structure and values.",
+    "prompt": {
+      "description": "Design serialize and deserialize operations that convert a binary tree to a string and reconstruct an equivalent tree.",
+      "examples": [{"input": "root = [1, 2, 3, null, null, 4, 5]", "output": "deserialize(serialize(root)) preserves the tree", "explanation": "The encoding must retain both values and child structure."}],
+      "constraints": ["The serialization format is your choice.", "The deserialized tree must match the original."]
+    },
+    "externalUrl": "https://leetcode.com/problems/serialize-and-deserialize-binary-tree/"
+  },
+  {
+    "id": "subtree-of-another-tree",
+    "title": "Subtree of Another Tree",
+    "difficulty": "Easy",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Check whether one tree occurs as a structurally identical subtree of another.",
+    "prompt": {
+      "description": "Given roots of two binary trees, determine whether the second tree appears as a subtree of the first, with matching values and structure.",
+      "examples": [{"input": "root = [3, 4, 5, 1, 2], subRoot = [4, 1, 2]", "output": "true", "explanation": "The subtree rooted at the node with value 4 matches."}],
+      "constraints": ["A tree is not a subtree if its values match but its structure differs."]
+    },
+    "externalUrl": "https://leetcode.com/problems/subtree-of-another-tree/"
+  },
+  {
+    "id": "construct-binary-tree-from-preorder-and-inorder-traversal",
+    "title": "Construct Binary Tree from Preorder and Inorder Traversal",
+    "difficulty": "Medium",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Rebuild a binary tree from its preorder and inorder traversals.",
+    "prompt": {
+      "description": "Given preorder and inorder traversals of a binary tree with unique values, construct and return the tree.",
+      "examples": [{"input": "preorder = [3, 9, 20, 15, 7], inorder = [9, 3, 15, 20, 7]", "output": "[3, 9, 20, null, null, 15, 7]", "explanation": "The traversals identify the root and recursively partition each subtree."}],
+      "constraints": ["Values are unique.", "Both traversals describe the same tree."]
+    },
+    "externalUrl": "https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/"
+  },
+  {
+    "id": "validate-binary-search-tree",
+    "title": "Validate Binary Search Tree",
+    "difficulty": "Medium",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Validate that every node respects the full ancestor bounds of a BST.",
+    "prompt": {
+      "description": "Given a binary tree, determine whether it is a valid binary search tree with strictly ordered values.",
+      "examples": [{"input": "root = [5, 1, 4, null, null, 3, 6]", "output": "false", "explanation": "The value 4 is in the right subtree of 5 but is smaller than 5."}],
+      "constraints": ["Each node must respect bounds imposed by all its ancestors."]
+    },
+    "externalUrl": "https://leetcode.com/problems/validate-binary-search-tree/"
+  },
+  {
+    "id": "kth-smallest-element-in-a-bst",
+    "title": "Kth Smallest Element in a BST",
+    "difficulty": "Medium",
+    "patterns": ["Tree", "Depth-first search"],
+    "summary": "Use the ordering of a BST to locate its kth smallest value.",
+    "prompt": {
+      "description": "Given the root of a binary search tree and integer k, return the kth smallest value.",
+      "examples": [{"input": "root = [3, 1, 4, null, 2], k = 1", "output": "1", "explanation": "The smallest value in the tree is 1."}],
+      "constraints": ["1 <= k <= number of nodes."]
+    },
+    "externalUrl": "https://leetcode.com/problems/kth-smallest-element-in-a-bst/"
+  },
+  {
+    "id": "lowest-common-ancestor-of-a-binary-search-tree",
+    "title": "Lowest Common Ancestor of a Binary Search Tree",
+    "difficulty": "Medium",
+    "patterns": ["Tree", "Binary search tree"],
+    "summary": "Find the deepest node that is an ancestor of both given BST nodes.",
+    "prompt": {
+      "description": "Given a binary search tree and two nodes in it, return their lowest common ancestor.",
+      "examples": [{"input": "root = [6, 2, 8, 0, 4, 7, 9], p = 2, q = 8", "output": "6", "explanation": "The root is the lowest node whose subtree contains both nodes."}],
+      "constraints": ["Both queried nodes exist in the tree."]
+    },
+    "externalUrl": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/"
+  },
+  {
+    "id": "implement-trie-prefix-tree",
+    "title": "Implement Trie (Prefix Tree)",
+    "difficulty": "Medium",
+    "patterns": ["Trie", "Design"],
+    "summary": "Implement a prefix tree supporting insertion, exact lookup, and prefix lookup.",
+    "prompt": {
+      "description": "Implement a trie with insert(word), search(word), and startsWith(prefix) operations.",
+      "examples": [{"input": "insert(\"apple\"); search(\"apple\"); startsWith(\"app\")", "output": "true; true", "explanation": "The full word is present and the prefix begins a stored word."}],
+      "constraints": ["Words contain lowercase English letters."]
+    },
+    "externalUrl": "https://leetcode.com/problems/implement-trie-prefix-tree/"
+  },
+  {
+    "id": "design-add-and-search-words-data-structure",
+    "title": "Design Add and Search Words Data Structure",
+    "difficulty": "Medium",
+    "patterns": ["Trie", "Backtracking", "Design"],
+    "summary": "Support word insertion and searches where a dot matches any one letter.",
+    "prompt": {
+      "description": "Design a data structure with addWord and search operations. In a search pattern, '.' matches any single lowercase letter.",
+      "examples": [{"input": "addWord(\"bad\"); addWord(\"dad\"); search(\".ad\")", "output": "true", "explanation": "The wildcard can match the first letter of an inserted word."}],
+      "constraints": ["Words and patterns contain lowercase letters or '.'.", "A dot matches exactly one character."]
+    },
+    "externalUrl": "https://leetcode.com/problems/design-add-and-search-words-data-structure/"
+  },
+  {
+    "id": "word-search-ii",
+    "title": "Word Search II",
+    "difficulty": "Hard",
+    "patterns": ["Trie", "Backtracking", "Matrix"],
+    "summary": "Find all dictionary words that can be traced through adjacent board cells.",
+    "prompt": {
+      "description": "Given a character board and a list of words, return all words that can be formed from adjacent cells without reusing a cell within a word.",
+      "examples": [{"input": "board = [[\"o\", \"a\"], [\"e\", \"t\"]], words = [\"oath\", \"eat\", \"tea\"]", "output": "[\"eat\"]", "explanation": "Only \"eat\" can be traced through adjacent cells in this board."}],
+      "constraints": ["Adjacency is horizontal or vertical.", "A board cell cannot be reused within one word."]
+    },
+    "externalUrl": "https://leetcode.com/problems/word-search-ii/"
+  },
+  {
+    "id": "find-median-from-data-stream",
+    "title": "Find Median from Data Stream",
+    "difficulty": "Hard",
+    "patterns": ["Heap", "Design"],
+    "summary": "Maintain a changing set of values while supporting median queries.",
+    "prompt": {
+      "description": "Design a data structure with addNum and findMedian operations for a stream of integers.",
+      "examples": [{"input": "addNum(1); addNum(2); findMedian(); addNum(3); findMedian()", "output": "1.5, 2", "explanation": "The median is the middle value, or the mean of two middle values."}],
+      "constraints": ["At least one value exists when findMedian is called."]
+    },
+    "externalUrl": "https://leetcode.com/problems/find-median-from-data-stream/"
+  },
+  {
+    "id": "top-k-frequent-elements",
+    "title": "Top K Frequent Elements",
+    "difficulty": "Medium",
+    "patterns": ["Array", "Hash map", "Heap"],
+    "summary": "Return the k values that occur most often in an integer array.",
+    "prompt": {
+      "description": "Given an integer array and integer k, return the k most frequent values in any order.",
+      "examples": [{"input": "values = [1, 1, 1, 2, 2, 3], k = 2", "output": "[1, 2]", "explanation": "1 occurs three times and 2 occurs twice."}],
+      "constraints": ["The answer is unique.", "Aim for better than sorting all distinct values when possible."]
+    },
+    "externalUrl": "https://leetcode.com/problems/top-k-frequent-elements/"
   }
 ]
