@@ -30,7 +30,7 @@ from backend.session.state import Session, SessionStore  # noqa: E402
 from backend.vision.gate import thumbnail  # noqa: E402
 from backend.voice.bridge import VoiceBridge  # noqa: E402
 from backend.vision.localize import PassPlan, plan_pass  # noqa: E402
-from backend import policy, voice_tools  # noqa: E402
+from backend import metrics, policy, voice_tools  # noqa: E402
 from backend.models.call_log import save_call  # noqa: E402
 from backend.submission import Submission, line_diff, submit as make_submission  # noqa: E402
 
@@ -229,16 +229,24 @@ def get_submission(session_id: str) -> dict[str, Any]:
     return session.submission.as_json()
 
 
+@app.get("/sessions/{session_id}/metrics")
+def get_metrics(session_id: str) -> dict[str, Any]:
+    """Latency measurements for this session (backend/metrics.py) and a per-metric summary."""
+    entries = metrics.load(require(session_id).log_dir)
+    return {"summary": metrics.summarize(entries), "entries": entries}
+
+
 @app.post("/sessions/{session_id}/end")
 def end_session(session_id: str) -> dict[str, bool]:
     require(session_id).ended = True
     return {"ok": True}
 
 
-async def _pass_task(session: Session, image: bytes, mime: str, plan: PassPlan) -> None:
+async def _pass_task(session: Session, image: bytes, mime: str, plan: PassPlan,
+                     changed_at: float | None) -> None:
     ok = False
     try:
-        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e), plan)
+        ok = await run_pass(session, image, mime, lambda e: broadcast(session.id, e), plan, changed_at)
     except Exception as exc:
         await broadcast(session.id, {"type": "status", "stage": "error", "detail": repr(exc)})
     finally:
@@ -246,6 +254,9 @@ async def _pass_task(session: Session, image: bytes, mime: str, plan: PassPlan) 
         session.last_pass_at = time.monotonic()
         if not ok:
             session.gate.reset_analyzed()
+            # The retry still answers the original change, so keep timing from it.
+            if changed_at is not None and (session.changed_since is None or changed_at < session.changed_since):
+                session.changed_since = changed_at
         session.transcribing = False
         session.busy = False
 
@@ -276,6 +287,8 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
             now = time.monotonic()
             gate = session.gate.update(thumb, now)
             session.pending_change = gate.changed
+            if gate.changed and session.changed_since is None:
+                session.changed_since = now
             session.board_stable = gate.stable
             await ws.send_json({"type": "gate", "changed": gate.changed,
                                 "stable": gate.stable, "busy": session.busy})
@@ -288,7 +301,8 @@ async def frames_ws(ws: WebSocket, session_id: str) -> None:
                 session.pending_change = False
                 session.pass_started_at = now
                 session.gate.mark_analyzed(thumb)
-                asyncio.create_task(_pass_task(session, image, mime, plan))
+                changed_at, session.changed_since = session.changed_since, None
+                asyncio.create_task(_pass_task(session, image, mime, plan, changed_at))
     except WebSocketDisconnect:
         pass
     finally:

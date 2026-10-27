@@ -10,9 +10,14 @@ CORS_ORIGINS = [
 	if origin.strip()
 ]
 
+# Provider per role: perceptron | gemini | claude (backend/models/providers).
+# *_MODEL empty = that provider's default model. *_EFFORT: none | low | medium | high.
 TRANSCRIBER = os.getenv("TRANSCRIBER", "perceptron")
-TRANSCRIBER_REASONING = os.getenv("TRANSCRIBER_REASONING", "low")
+TRANSCRIBER_MODEL = os.getenv("TRANSCRIBER_MODEL", "")
+TRANSCRIBER_EFFORT = os.getenv("TRANSCRIBER_EFFORT", "low")
 ANALYZER = os.getenv("ANALYZER", "claude")
+ANALYZER_MODEL = os.getenv("ANALYZER_MODEL", "")
+ANALYZER_EFFORT = os.getenv("ANALYZER_EFFORT", "medium")
 
 # Frame gate (whole-frame, no homography). Diffs are computed on a small grayscale
 # thumbnail; a pixel counts as changed if its value moves more than PIXEL_DELTA.
@@ -35,12 +40,11 @@ UNLOCALIZED_MAX_FRACTION = float(os.getenv("UNLOCALIZED_MAX_FRACTION", "0.15"))
 
 # Voice agent (Gemini Live, audio only). Model ID per ai.google.dev/gemini-api/docs/live-api/capabilities.
 VOICE_MODEL = os.getenv("VOICE_MODEL", "gemini-3.8-live")
-VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
 # Prebuilt voice (list: ai.google.dev/gemini-api/docs/speech-generation#voices). Empty = model default.
 VOICE_NAME = os.getenv("VOICE_NAME", "Achird")
 # Silence that ends a candidate turn for Gemini's speech detection (it only transcribes and
 # speaks; Claude in voice/brain.py decides whether to reply at all).
-VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "800"))
+VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "500"))
 # Interviewer brain (Claude decides what to say; Gemini Live only speaks it).
 BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-opus-5-5")
 BRAIN_EFFORT = os.getenv("BRAIN_EFFORT", "low")

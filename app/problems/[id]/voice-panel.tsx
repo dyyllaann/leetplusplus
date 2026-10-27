@@ -11,7 +11,7 @@ const STATE_LABEL: Record<Voice["state"], string> = {
   error: "Interviewer error",
 };
 
-/** Slim strip under the header: interviewer status, latest line, push-to-talk. */
+/** Slim strip under the header: interviewer status, latest line. */
 export function VoiceStrip({ voice }: { voice: Voice }) {
   const last = voice.turns.at(-1);
   const lastInterviewer = [...voice.turns].reverse().find((turn) => turn.role === "interviewer");
@@ -37,17 +37,6 @@ export function VoiceStrip({ voice }: { voice: Voice }) {
           <><span className="font-medium">{shown.role === "interviewer" ? "Interviewer: " : "You: "}</span>{shown.text}</>
         ) : null}
       </p>
-      {voice.pushToTalk && voice.state === "live" && (
-        <button
-          type="button"
-          onPointerDown={() => voice.setTalking(true)}
-          onPointerUp={() => voice.setTalking(false)}
-          onPointerLeave={() => voice.setTalking(false)}
-          className="shrink-0 rounded bg-[#174d3b] px-3 py-1 text-xs font-semibold text-white active:bg-[#103c2e]"
-        >
-          Hold to talk
-        </button>
-      )}
     </div>
   );
 }

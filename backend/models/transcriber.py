@@ -1,73 +1,58 @@
-"""Board transcription behind a swappable interface."""
+"""Board transcription: shared prompts and schemas, any provider (backend/models/providers)."""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-
 from backend import config
-from backend.models import perceptron_client
 from backend.models.prompts import (LINE_SYSTEM, LINE_USER, TRANSCRIBE_SYSTEM,
                                     TRANSCRIBE_SYSTEM_LINE_BOXES, TRANSCRIBE_USER)
+from backend.models.providers import Provider, check_effort, get_provider
 from backend.models.schemas import LineReading, ModelCall, Transcription, TranscriptionNoBox
 
 
-class Transcriber(ABC):
-    name: str
+class Transcriber:
+    def __init__(self, provider: Provider, model: str | None = None, effort: str = "low"):
+        self.provider = provider
+        self.model = model or provider.default_model
+        self.effort = check_effort(effort)
 
-    @abstractmethod
+    @property
+    def name(self) -> str:
+        return self.provider.name
+
     def transcribe(self, image: bytes, mime: str) -> ModelCall[Transcription]:
         """Literal transcription of every region on the board."""
-
-    @abstractmethod
-    def transcribe_line(self, image: bytes, mime: str) -> ModelCall[LineReading]:
-        """Literal transcription of one cropped line."""
-
-
-class PerceptronTranscriber(Transcriber):
-    name = "perceptron"
-
-    def __init__(self, model: str = perceptron_client.DEFAULT_MODEL,
-                 reasoning_effort: str | None = "low"):
-        self.model = model
-        self.reasoning_effort = reasoning_effort
-
-    def transcribe(self, image: bytes, mime: str) -> ModelCall[Transcription]:
         line_boxes = config.LINE_PATCH
-        call = perceptron_client.structured_completion(
+        call = self.provider.structured(
             system=TRANSCRIBE_SYSTEM_LINE_BOXES if line_boxes else TRANSCRIBE_SYSTEM,
             user_text=TRANSCRIBE_USER,
             image=image,
             mime=mime,
             # LINE_PATCH=0 sends exactly the original request format (no line boxes).
-            schema_model=Transcription if line_boxes else TranscriptionNoBox,
+            schema=Transcription if line_boxes else TranscriptionNoBox,
             schema_name="board_transcription",
             model=self.model,
-            reasoning_effort=self.reasoning_effort,
+            effort=self.effort,
             # A full board is ~500 tokens (more with line boxes); a cap stops runaway repetition.
-            max_completion_tokens=3072 if line_boxes else 2048,
+            max_tokens=3072 if line_boxes else 2048,
         )
         if call.parsed is not None and not line_boxes:
             call.parsed = Transcription.model_validate(call.parsed.model_dump())
         return call
 
     def transcribe_line(self, image: bytes, mime: str) -> ModelCall[LineReading]:
-        return perceptron_client.structured_completion(
+        """Literal transcription of one cropped line."""
+        return self.provider.structured(
             system=LINE_SYSTEM,
             user_text=LINE_USER,
             image=image,
             mime=mime,
-            schema_model=LineReading,
+            schema=LineReading,
             schema_name="line_reading",
             model=self.model,
-            reasoning_effort=self.reasoning_effort,
-            max_completion_tokens=256,
+            effort=self.effort,
+            max_tokens=256,
         )
 
 
-TRANSCRIBERS: dict[str, type[Transcriber]] = {
-    PerceptronTranscriber.name: PerceptronTranscriber,
-}
-
-
-def get_transcriber(name: str, **kwargs) -> Transcriber:
-    return TRANSCRIBERS[name](**kwargs)
+def get_transcriber(provider: str, model: str | None = None, effort: str = "low") -> Transcriber:
+    return Transcriber(get_provider(provider), model, effort)

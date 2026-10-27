@@ -91,3 +91,14 @@ def test_bridge_only_voices_brain_lines(monkeypatch):
     assert not b.should_voice_turn()      # Gemini replying on its own: muted
     b.awaiting_response = True            # a [SAY] from the brain: played
     assert b.should_voice_turn()
+
+
+def test_live_config_uses_configured_silence_threshold(monkeypatch):
+    from backend.voice.bridge import VoiceBridge
+
+    monkeypatch.setattr("backend.config.VOICE_SILENCE_MS", 350)
+    bridge = object.__new__(VoiceBridge)
+
+    assert bridge._live_config()["realtime_input_config"] == {
+        "automatic_activity_detection": {"silence_duration_ms": 350}
+    }

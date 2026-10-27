@@ -3,6 +3,9 @@
 Usage:
     .venv/bin/python scripts/validate_models.py
     .venv/bin/python scripts/validate_models.py --analyzers claude,gemini --use-expected-transcription
+    .venv/bin/python scripts/validate_models.py --transcriber gemini
+
+To compare transcribers, use scripts/benchmark_transcribers.py.
 """
 
 from __future__ import annotations
@@ -72,8 +75,9 @@ def main() -> int:
     parser.add_argument("--image", default="fixtures/whiteboard_1.png")
     parser.add_argument("--expected", default="fixtures/whiteboard_1.expected.json")
     parser.add_argument("--analyzers", default=",".join(ANALYZERS))
+    parser.add_argument("--transcriber", default="perceptron")
     parser.add_argument("--use-expected-transcription", action="store_true",
-                        help="Feed analyzers the ground-truth lines instead of Perceptron's output")
+                        help="Feed analyzers the ground-truth lines instead of the transcriber's output")
     args = parser.parse_args()
 
     load_dotenv(ROOT / ".env")
@@ -86,15 +90,15 @@ def main() -> int:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Literal transcription (always run, so it is scored even if analyzers use ground truth).
-    t_call = get_transcriber("perceptron").transcribe(image, mime)
-    save_call(log_dir, "transcription_perceptron", t_call)
+    t_call = get_transcriber(args.transcriber).transcribe(image, mime)
+    save_call(log_dir, f"transcription_{args.transcriber}", t_call)
     t_score = score_transcription(t_call.parsed, expected) if t_call.parsed else None
     report_transcription(t_call, t_score)
 
     if args.use_expected_transcription:
         transcription, source = expected_transcription(expected), "ground truth"
     elif t_call.parsed:
-        transcription, source = t_call.parsed, "perceptron"
+        transcription, source = t_call.parsed, args.transcriber
     else:
         print("\nTranscription failed; falling back to ground-truth lines for analyzers.")
         transcription, source = expected_transcription(expected), "ground truth (fallback)"

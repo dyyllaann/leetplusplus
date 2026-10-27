@@ -110,6 +110,15 @@ Edge-case findings (tier 3) are only released during `tracing` or `done`.
 ### `POST /sessions/{sessionId}/transcript`
 Request: `{ "role": "candidate" | "interviewer", "text": "..." }`. Stored for scoring.
 
+### `GET /sessions/{sessionId}/metrics`
+Latency measurements (backend/metrics.py), also appended to
+`logs/sessions/<id>/metrics.jsonl`. Returns `{summary: {metric: {count, mean, p50, p90, max}},
+entries: [{metric, seconds, at, ...fields}]}`. Metrics: `board_to_display` (first changed
+frame -> new transcription broadcast; fields `wait_s`, `transcribe_s`, `mode`),
+`analyze_written` (analyzer call), `analyze_verbal` (brain call on a candidate utterance),
+`audio_response` (end of utterance or policy release -> first interviewer audio chunk;
+fields `trigger`, `brain_s`, `tts_s`), `brain_decision` (other brain calls).
+
 ### `POST /sessions/{sessionId}/end`
 Response: `{ "ok": true }`
 
@@ -189,15 +198,15 @@ finishes (`analysisPending: false`, updated findings):
 ## Voice WebSocket `ws://localhost:8000/sessions/{sessionId}/voice`
 
 Open after creating the session. Audio only (the voice model never receives camera frames).
+Automatic speech detection treats 500 ms of silence as the end of a turn by default.
+Set `VOICE_SILENCE_MS` in `.env` to tune that delay.
 
 ### Client -> server
 - Binary messages: 16 kHz mono PCM16 little-endian microphone audio, ~40 ms chunks.
-- Push-to-talk (only when the server reports `pushToTalk: true`):
-  `{ "type": "ptt", "state": "down" | "up" }`
 
 ### Server -> client
 - Binary messages: 24 kHz mono PCM16 interviewer audio. Play in order.
-- `{ "type": "voiceStatus", "state": "connected" | "error", "pushToTalk": false, "detail"?: "..." }`
+- `{ "type": "voiceStatus", "state": "connected" | "error", "detail"?: "..." }`
 - `{ "type": "interrupted" }`: the candidate talked over the interviewer; stop playback and drop queued audio.
 - `{ "type": "transcript", "role": "candidate" | "interviewer", "text": "..." }` (one per completed turn)
 - `{ "type": "highlight", "regionId": "code_1", "line": 4 }` (`line` 0 = whole region)

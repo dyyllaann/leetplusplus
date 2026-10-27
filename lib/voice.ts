@@ -50,7 +50,6 @@ export function useVoiceSession() {
   const [error, setError] = useState<string | null>(null);
   const [turns, setTurns] = useState<VoiceTurn[]>([]);
   const [highlight, setHighlight] = useState<Highlight | null>(null);
-  const [pushToTalk, setPushToTalk] = useState(false);
   const [interviewerSpeaking, setInterviewerSpeaking] = useState(false);
 
   const stopPlayback = useCallback(() => {
@@ -142,7 +141,6 @@ export function useVoiceSession() {
         if (event.type === "voiceStatus") {
           if (event.state === "connected") {
             setState("live");
-            setPushToTalk(!!event.pushToTalk);
           } else if (event.state === "error") {
             setState("error");
             setError(event.detail ?? "Voice session failed");
@@ -166,14 +164,7 @@ export function useVoiceSession() {
     }
   }, [playChunk, stopPlayback]);
 
-  const setTalking = useCallback((talking: boolean) => {
-    const socket = socketRef.current;
-    if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify({ type: "ptt", state: talking ? "down" : "up" }));
-    }
-  }, []);
-
   useEffect(() => stop, [stop]);
 
-  return { state, error, turns, highlight, pushToTalk, interviewerSpeaking, start, stop, setTalking };
+  return { state, error, turns, highlight, interviewerSpeaking, start, stop };
 }

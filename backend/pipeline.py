@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import io
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from PIL import Image
 
-from backend import config
+from backend import config, metrics
 from backend.models.analyzer import Analyzer, get_analyzer
 from backend.models.call_log import save_call
 from backend.models.transcriber import Transcriber, get_transcriber
@@ -27,9 +28,10 @@ _analyzer: Analyzer | None = None
 def models() -> tuple[Transcriber, Analyzer]:
     global _transcriber, _analyzer
     if _transcriber is None:
-        _transcriber = get_transcriber(config.TRANSCRIBER, reasoning_effort=config.TRANSCRIBER_REASONING)
+        _transcriber = get_transcriber(config.TRANSCRIBER, config.TRANSCRIBER_MODEL or None,
+                                       config.TRANSCRIBER_EFFORT)
     if _analyzer is None:
-        _analyzer = get_analyzer(config.ANALYZER)
+        _analyzer = get_analyzer(config.ANALYZER, config.ANALYZER_MODEL or None, config.ANALYZER_EFFORT)
     return _transcriber, _analyzer
 
 
@@ -183,8 +185,9 @@ def board_text(t: Transcription | None) -> list[tuple[str, list[str]]]:
 
 
 async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
-                   plan: PassPlan | None = None) -> bool:
-    """Returns True if the pass completed and session state was updated."""
+                   plan: PassPlan | None = None, changed_at: float | None = None) -> bool:
+    """Returns True if the pass completed and session state was updated.
+    changed_at: monotonic time the board change behind this pass was first seen."""
     plan = plan or PassPlan(True, "default")
     transcriber, analyzer = models()
     session.attempts += 1
@@ -193,7 +196,7 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
     ext = mime.split("/")[-1].replace("jpeg", "jpg")
     (session.log_dir / f"{n:03d}_frame.{ext}").write_bytes(image)
 
-    started = asyncio.get_running_loop().time()
+    started = time.monotonic()
     if plan.full:
         await emit({"type": "status", "stage": "transcribing", "detail": f"full board ({plan.reason})"})
         t_call = await asyncio.to_thread(transcriber.transcribe, image, mime)
@@ -216,7 +219,7 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
             return False
         transcription = patched
         session.partials_since_full += 1
-    t_seconds = asyncio.get_running_loop().time() - started
+    t_seconds = time.monotonic() - started
     if only_lost_text(session.raw_transcription, transcription):
         # Something is blocking the board: keep the last good reading until an actual change.
         session.mark_unchanged_pass()
@@ -231,10 +234,16 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
     # Publish the new text now; the analyzer (the slower call) runs afterwards.
     session.apply_transcription(transcription)
     await emit(session.board_state())
+    mode = "full" if plan.full else "lines"
+    if changed_at is not None:
+        metrics.record(session.log_dir, "board_to_display", time.monotonic() - changed_at, pass_n=n,
+                       mode=mode, wait_s=round(started - changed_at, 3), transcribe_s=round(t_seconds, 3))
     await emit({"type": "status", "stage": "analyzing",
                 "detail": f"transcribed in {t_seconds:.1f}s"})
     a_call = await asyncio.to_thread(analyzer.analyze, image, mime, transcription, session.problem_text)
     save_call(session.log_dir, f"{n:03d}_analysis", a_call)
+    metrics.record(session.log_dir, "analyze_written", a_call.latency_s, pass_n=n, mode=mode,
+                   ok=a_call.parsed is not None)
     if a_call.parsed is None:
         session.analysis_pending = False
         await emit({"type": "status", "stage": "error", "detail": f"analysis: {a_call.error}"})
@@ -247,6 +256,6 @@ async def run_pass(session: Session, image: bytes, mime: str, emit: Emit,
     session.apply_pass(corrected, a_call.parsed.findings, raw=transcription, corrected_lines=originals)
     await emit(session.board_state())
     await emit({"type": "status", "stage": "idle",
-                "detail": f"transcribed {t_seconds:.1f}s ({'full' if plan.full else 'lines'}), "
+                "detail": f"transcribed {t_seconds:.1f}s ({mode}), "
                           f"analyzed {a_call.latency_s:.1f}s"})
     return True
