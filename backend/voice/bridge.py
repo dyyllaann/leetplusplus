@@ -181,6 +181,8 @@ class VoiceBridge:
                 if sc.turn_complete:
                     self.gemini_turn_active = False
                     self.expect_interrupt = False
+                    if self.candidate_buffer:
+                        await self._finish_utterance()
                     if self.turn_voiced:
                         self.awaiting_response = False
                     self.interviewer_speaking = False

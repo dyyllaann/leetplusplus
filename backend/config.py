@@ -40,7 +40,7 @@ VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
 VOICE_NAME = os.getenv("VOICE_NAME", "Achird")
 # Silence that ends a candidate turn for Gemini's speech detection (it only transcribes and
 # speaks; Claude in voice/brain.py decides whether to reply at all).
-VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "800"))
+VOICE_SILENCE_MS = int(os.getenv("VOICE_SILENCE_MS", "500"))
 # Interviewer brain (Claude decides what to say; Gemini Live only speaks it).
 BRAIN_MODEL = os.getenv("BRAIN_MODEL", "claude-opus-5-5")
 BRAIN_EFFORT = os.getenv("BRAIN_EFFORT", "low")

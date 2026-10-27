@@ -198,6 +198,9 @@ finishes (`analysisPending: false`, updated findings):
 ## Voice WebSocket `ws://localhost:8000/sessions/{sessionId}/voice`
 
 Open after creating the session. Audio only (the voice model never receives camera frames).
+Automatic speech detection treats 500 ms of silence as the end of a turn by default.
+Set `VOICE_SILENCE_MS` in `.env` to tune that delay; set `VOICE_PUSH_TO_TALK=1` to
+use the optional hold-to-talk control instead.
 
 ### Client -> server
 - Binary messages: 16 kHz mono PCM16 little-endian microphone audio, ~40 ms chunks.
