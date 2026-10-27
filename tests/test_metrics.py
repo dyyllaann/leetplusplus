@@ -67,7 +67,7 @@ def test_bridge_records_verbal_analysis_and_audio_response(monkeypatch, tmp_path
     monkeypatch.setattr("backend.session.state.LOG_ROOT", tmp_path)
     monkeypatch.setattr(bridge_module, "InterviewerBrain", FakeBrain)
     s = Session(id="s", problem_id="two-sum", problem_text="Two Sum")
-    b = bridge_module.VoiceBridge(s, FakeWs(), notify_board=None, push_to_talk=False)
+    b = bridge_module.VoiceBridge(s, FakeWs(), notify_board=None)
     b.live = FakeLive()
 
     async def scenario():

@@ -1,6 +1,6 @@
 """Bridges a browser audio WebSocket to Gemini Live (ears + voice) and Claude (brain).
 
-Browser -> server: binary = 16 kHz mono PCM16; text JSON {"type": "ptt", "state": "down"|"up"}.
+Browser -> server: binary = 16 kHz mono PCM16.
 Server -> browser: binary = 24 kHz mono PCM16; text JSON events (see docs/api.md).
 
 Gemini Live transcribes the candidate and speaks lines verbatim; its own replies are muted.
@@ -60,12 +60,10 @@ def user_turn(text: str) -> types.Content:
 
 class VoiceBridge:
     def __init__(self, session: Session, ws: WebSocket,
-                 notify_board: Callable[[], Awaitable[None]],
-                 push_to_talk: bool = config.VOICE_PUSH_TO_TALK):
+                 notify_board: Callable[[], Awaitable[None]]):
         self.session = session
         self.ws = ws
         self.notify_board = notify_board
-        self.push_to_talk = push_to_talk
         self.tools = VoiceTools(session, self._send_json, time.monotonic)
         self.brain = InterviewerBrain(session)
         self.live = None
@@ -95,13 +93,10 @@ class VoiceBridge:
             "system_instruction": RELAY_PROMPT,
             "input_audio_transcription": {},
             "output_audio_transcription": {},
-        }
-        if self.push_to_talk:
-            cfg["realtime_input_config"] = {"automatic_activity_detection": {"disabled": True}}
-        else:
-            cfg["realtime_input_config"] = {"automatic_activity_detection": {
+            "realtime_input_config": {"automatic_activity_detection": {
                 "silence_duration_ms": config.VOICE_SILENCE_MS,
-            }}
+            }},
+        }
         if config.VOICE_NAME:
             cfg["speech_config"] = {"voice_config": {"prebuilt_voice_config": {"voice_name": config.VOICE_NAME}}}
         return cfg
@@ -110,8 +105,7 @@ class VoiceBridge:
         client = genai.Client()  # reads GEMINI_API_KEY
         async with client.aio.live.connect(model=config.VOICE_MODEL, config=self._live_config()) as live:
             self.live = live
-            await self._send_json({"type": "voiceStatus", "state": "connected",
-                                   "pushToTalk": self.push_to_talk})
+            await self._send_json({"type": "voiceStatus", "state": "connected"})
             self.pending_events.append(("start", ""))
             tasks = [asyncio.create_task(c) for c in (self._from_browser(), self._from_gemini(), self._tick())]
             try:
@@ -133,13 +127,6 @@ class VoiceBridge:
             if msg.get("bytes"):
                 await self.live.send_realtime_input(
                     audio=types.Blob(data=msg["bytes"], mime_type="audio/pcm;rate=16000"))
-            elif msg.get("text"):
-                event = json.loads(msg["text"])
-                if event.get("type") == "ptt" and self.push_to_talk:
-                    if event.get("state") == "down":
-                        await self.live.send_realtime_input(activity_start=types.ActivityStart())
-                    else:
-                        await self.live.send_realtime_input(activity_end=types.ActivityEnd())
 
     # --- Gemini: transcripts in, audio out ---------------------------------------
 

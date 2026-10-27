@@ -98,7 +98,6 @@ def test_live_config_uses_configured_silence_threshold(monkeypatch):
 
     monkeypatch.setattr("backend.config.VOICE_SILENCE_MS", 350)
     bridge = object.__new__(VoiceBridge)
-    bridge.push_to_talk = False
 
     assert bridge._live_config()["realtime_input_config"] == {
         "automatic_activity_detection": {"silence_duration_ms": 350}

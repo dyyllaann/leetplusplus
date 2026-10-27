@@ -35,7 +35,6 @@ UNLOCALIZED_MAX_FRACTION = float(os.getenv("UNLOCALIZED_MAX_FRACTION", "0.15"))
 
 # Voice agent (Gemini Live, audio only). Model ID per ai.google.dev/gemini-api/docs/live-api/capabilities.
 VOICE_MODEL = os.getenv("VOICE_MODEL", "gemini-3.8-live")
-VOICE_PUSH_TO_TALK = os.getenv("VOICE_PUSH_TO_TALK", "0") == "1"
 # Prebuilt voice (list: ai.google.dev/gemini-api/docs/speech-generation#voices). Empty = model default.
 VOICE_NAME = os.getenv("VOICE_NAME", "Achird")
 # Silence that ends a candidate turn for Gemini's speech detection (it only transcribes and

@@ -95,5 +95,4 @@ Voice wiring (backend side is built; the Gemini Live client must call it, see do
 Phases 0-4 are the minimum demo.
 
 ## Fallbacks
-- Realtime voice unstable -> push-to-talk.
 - Dashboard behind -> static page from seeded data.
