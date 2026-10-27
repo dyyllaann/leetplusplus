@@ -110,6 +110,15 @@ Edge-case findings (tier 3) are only released during `tracing` or `done`.
 ### `POST /sessions/{sessionId}/transcript`
 Request: `{ "role": "candidate" | "interviewer", "text": "..." }`. Stored for scoring.
 
+### `GET /sessions/{sessionId}/metrics`
+Latency measurements (backend/metrics.py), also appended to
+`logs/sessions/<id>/metrics.jsonl`. Returns `{summary: {metric: {count, mean, p50, p90, max}},
+entries: [{metric, seconds, at, ...fields}]}`. Metrics: `board_to_display` (first changed
+frame -> new transcription broadcast; fields `wait_s`, `transcribe_s`, `mode`),
+`analyze_written` (analyzer call), `analyze_verbal` (brain call on a candidate utterance),
+`audio_response` (end of utterance or policy release -> first interviewer audio chunk;
+fields `trigger`, `brain_s`, `tts_s`), `brain_decision` (other brain calls).
+
 ### `POST /sessions/{sessionId}/end`
 Response: `{ "ok": true }`
 

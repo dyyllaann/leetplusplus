@@ -95,6 +95,9 @@ class Session:
     transcribing: bool = False
     # Latest frame differs from the last analyzed frame (updated on every frame).
     pending_change: bool = False
+    # Monotonic time of the first frame that differed from the last analyzed one
+    # (start of the latest writing); the board_to_display metric measures from here.
+    changed_since: float | None = None
     # Transcription is newer than the findings: analyzer still running for this text.
     analysis_pending: bool = False
     last_pass_at: float = 0.0

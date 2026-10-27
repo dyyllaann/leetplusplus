@@ -22,7 +22,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from google import genai
 from google.genai import types
 
-from backend import config, policy
+from backend import config, metrics, policy
 from backend.session.state import Session
 from backend.voice.brain import BrainDecision, InterviewerBrain
 from backend.voice.tools import VoiceTools, hint_text
@@ -82,6 +82,9 @@ class VoiceBridge:
         self.thinking = False  # a brain call is in flight
         self.pending_events: list[tuple[str, str]] = []
         self.candidate_buffer = ""
+        self.utterance_end_at: float | None = None  # last transcript chunk of the latest utterance
+        # Timing for the next voiced line: {trigger, since, brain_s, said_at}; see metrics.py.
+        self.pending_reply: dict[str, Any] | None = None
 
     async def _send_json(self, event: dict[str, Any]) -> None:
         await self.ws.send_text(json.dumps(event))
@@ -160,6 +163,7 @@ class VoiceBridge:
                     else:
                         # The candidate talked over the interviewer: that line is cancelled.
                         self.awaiting_response = False
+                        self.pending_reply = None
                         await self._send_json({"type": "interrupted"})
                 if sc.input_transcription and sc.input_transcription.text:
                     self.last_candidate_speech_at = time.monotonic()
@@ -172,6 +176,7 @@ class VoiceBridge:
                                 self.turn_voiced = self.should_voice_turn()
                             if self.turn_voiced:
                                 self.interviewer_speaking = True
+                                self._record_reply_audio()
                                 await self.ws.send_bytes(part.inline_data.data)
                 if sc.turn_complete:
                     self.gemini_turn_active = False
@@ -181,7 +186,17 @@ class VoiceBridge:
                     self.interviewer_speaking = False
                     self.turn_voiced = None
 
-    async def _say(self, text: str) -> None:
+    def _record_reply_audio(self) -> None:
+        r, self.pending_reply = self.pending_reply, None
+        if r is None:
+            return
+        now = time.monotonic()
+        metrics.record(self.session.log_dir, "audio_response", now - r["since"], trigger=r["trigger"],
+                       brain_s=round(r["brain_s"], 3), tts_s=round(now - r["said_at"], 3))
+
+    async def _say(self, text: str, reply: dict[str, Any] | None = None) -> None:
+        if reply is not None:
+            self.pending_reply = {**reply, "said_at": time.monotonic()}
         self.expect_interrupt = self.gemini_turn_active
         self.awaiting_response = True
         self.turn_voiced = None
@@ -196,6 +211,7 @@ class VoiceBridge:
         self.candidate_buffer = ""
         if not text:
             return
+        self.utterance_end_at = self.last_candidate_speech_at or time.monotonic()
         self.session.transcript.append({"role": "candidate", "text": text, "at": time.time()})
         await self._send_json({"type": "transcript", "role": "candidate", "text": text})
         if policy.candidate_signals_done(text):
@@ -216,16 +232,26 @@ class VoiceBridge:
     async def _run_brain(self, event: str, detail: str) -> None:
         self.thinking = True
         try:
-            hint = self._available_hint(time.monotonic())
+            started = time.monotonic()
+            since = (self.utterance_end_at if event == "candidate_spoke"
+                     else self.last_release_at if event == "coach" else None)
+            hint = self._available_hint(started)
             decision = await self.brain.decide(event, detail, hint)
+            brain_s = time.monotonic() - started
+            metrics.record(self.session.log_dir,
+                           "analyze_verbal" if event == "candidate_spoke" else "brain_decision", brain_s,
+                           event=event, ok=decision is not None,
+                           spoke=bool(decision and decision.say.strip()))
             if decision is not None:
-                await self._act(decision, hint)
+                reply = {"trigger": event, "since": since, "brain_s": brain_s} if since is not None else None
+                await self._act(decision, hint, reply)
         except Exception:
             logger.exception("brain call failed")
         finally:
             self.thinking = False
 
-    async def _act(self, d: BrainDecision, hint: tuple[int, str] | None) -> None:
+    async def _act(self, d: BrainDecision, hint: tuple[int, str] | None,
+                   reply: dict[str, Any] | None = None) -> None:
         if d.point_region_id:
             await self.tools.call("point_to_region", {"region_id": d.point_region_id, "line": d.point_line})
         if d.flag_category and d.point_region_id:
@@ -234,7 +260,7 @@ class VoiceBridge:
         if d.used_hint_level and hint and d.used_hint_level == hint[0]:
             await self.tools.call("give_hint", {"level": hint[0]})
         if d.say.strip():
-            await self._say(d.say.strip())
+            await self._say(d.say.strip(), reply)
 
     async def _tick(self) -> None:
         while True:
