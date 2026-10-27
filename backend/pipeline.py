@@ -28,9 +28,10 @@ _analyzer: Analyzer | None = None
 def models() -> tuple[Transcriber, Analyzer]:
     global _transcriber, _analyzer
     if _transcriber is None:
-        _transcriber = get_transcriber(config.TRANSCRIBER, reasoning_effort=config.TRANSCRIBER_REASONING)
+        _transcriber = get_transcriber(config.TRANSCRIBER, config.TRANSCRIBER_MODEL or None,
+                                       config.TRANSCRIBER_EFFORT)
     if _analyzer is None:
-        _analyzer = get_analyzer(config.ANALYZER)
+        _analyzer = get_analyzer(config.ANALYZER, config.ANALYZER_MODEL or None, config.ANALYZER_EFFORT)
     return _transcriber, _analyzer
 
 

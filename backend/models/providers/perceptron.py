@@ -1,4 +1,4 @@
-"""Thin HTTP client for Perceptron's chat completions API.
+"""Perceptron provider: thin HTTP client for Perceptron's chat completions API.
 
 Request format per docs.perceptron.inc (perceptron-mk1.5 API reference):
 POST https://api.perceptron.inc/v1/chat/completions, Bearer auth, OpenAI-style
@@ -7,7 +7,6 @@ messages, image_url parts accept base64 data URLs, response_format json_schema.
 
 from __future__ import annotations
 
-import base64
 import os
 import time
 from typing import Any, TypeVar
@@ -15,10 +14,12 @@ from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel
 
+from backend.models.providers import Provider, b64, check_effort
 from backend.models.schemas import ModelCall, inline_json_schema
 
 BASE_URL = "https://api.perceptron.inc/v1"
 DEFAULT_MODEL = "perceptron-mk1.5"
+MAX_OUTPUT_TOKENS = 8192  # the ~36k context is shared with the image and prompt
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -34,7 +35,7 @@ def http() -> httpx.Client:
 
 
 def data_url(image: bytes, mime: str) -> str:
-    return f"data:{mime};base64,{base64.b64encode(image).decode()}"
+    return f"data:{mime};base64,{b64(image)}"
 
 
 def redact_images(payload: dict[str, Any]) -> dict[str, Any]:
@@ -117,3 +118,17 @@ def structured_completion(
         call.latency_s = call.latency_s or time.perf_counter() - start
         call.error = f"{type(exc).__name__}: {exc}"
     return call
+
+
+class PerceptronProvider(Provider):
+    name = "perceptron"
+    default_model = DEFAULT_MODEL
+
+    def structured(self, *, system, user_text, schema, schema_name, model, effort, max_tokens,
+                   image=None, mime=None):
+        return structured_completion(
+            system=system, user_text=user_text, image=image, mime=mime,
+            schema_model=schema, schema_name=schema_name, model=model,
+            reasoning_effort=None if check_effort(effort) == "none" else effort,
+            max_completion_tokens=min(max_tokens, MAX_OUTPUT_TOKENS),
+        )

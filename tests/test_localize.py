@@ -118,25 +118,28 @@ def test_run_pass_partial_updates_state_and_counts(tmp_path, monkeypatch):
 
 
 def test_line_patch_off_sends_original_request_format(monkeypatch):
-    from backend.models import perceptron_client, prompts, schemas
-    from backend.models.transcriber import PerceptronTranscriber
+    from backend.models import prompts, schemas
+    from backend.models.providers import Provider
+    from backend.models.transcriber import Transcriber
 
     seen = {}
 
-    def fake(**kw):
-        seen.update(kw)
-        parsed = kw["schema_model"].model_validate({"regions": [{
-            "id": "code_1", "type": "code", "bbox": {"x1": 0, "y1": 0, "x2": 1, "y2": 1},
-            "lines": [{"n": 1, "text": "x", "low_confidence_chars": []}]}]})
-        return ModelCall(provider="fake", model="fake", parsed=parsed, latency_s=0.0)
+    class FakeProvider(Provider):
+        name, default_model = "fake", "fake-1"
 
-    monkeypatch.setattr(perceptron_client, "structured_completion", fake)
+        def structured(self, **kw):
+            seen.update(kw)
+            parsed = kw["schema"].model_validate({"regions": [{
+                "id": "code_1", "type": "code", "bbox": {"x1": 0, "y1": 0, "x2": 1, "y2": 1},
+                "lines": [{"n": 1, "text": "x", "low_confidence_chars": []}]}]})
+            return ModelCall(provider="fake", model="fake", parsed=parsed, latency_s=0.0)
+
     monkeypatch.setattr(config, "LINE_PATCH", False)
-    call = PerceptronTranscriber().transcribe(b"", "image/jpeg")
-    assert seen["schema_model"] is schemas.TranscriptionNoBox
+    call = Transcriber(FakeProvider()).transcribe(b"", "image/jpeg")
+    assert seen["schema"] is schemas.TranscriptionNoBox
     assert seen["system"] == prompts.TRANSCRIBE_SYSTEM and "every line its own" not in seen["system"]
     assert isinstance(call.parsed, Transcription) and call.parsed.regions[0].lines[0].bbox is None
 
     monkeypatch.setattr(config, "LINE_PATCH", True)
-    PerceptronTranscriber().transcribe(b"", "image/jpeg")
-    assert seen["schema_model"] is schemas.Transcription
+    Transcriber(FakeProvider()).transcribe(b"", "image/jpeg")
+    assert seen["schema"] is schemas.Transcription

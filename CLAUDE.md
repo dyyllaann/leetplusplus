@@ -9,14 +9,17 @@ Deadline: Sun Oct 18, 10:30 AM. Prefer working, demoable code over completeness.
 ## Stack
 - Frontend: Next.js (camera, mic, audio, read-only mirror editor, dashboard)
 - Backend: FastAPI (Python)
-- Vision: Perceptron `perceptron-mk1.5` (Isaac model IDs are retired; do not use them)
+- Vision: transcriber chosen by config (`TRANSCRIBER`): Perceptron `perceptron-mk1.5` by default
+  (Isaac model IDs are retired; do not use them) or Gemini `gemini-3.8-flash`
 - Voice: Google Gemini Live API (speech-to-speech) via Pipecat's Gemini Live service; audio only, no video
-- Logic analysis: behind an interface; model chosen by config (Perceptron, Gemini, or Claude)
+- Logic analysis: model chosen by config (`ANALYZER`: Perceptron, Gemini, or Claude)
+- Both roles call providers in backend/models/providers/ (one file per provider).
+  Compare transcribers with scripts/benchmark_transcribers.py before switching.
 - Database: SQLite for the hackathon
 
 ## Environment variables
 - `PERCEPTRON_API_KEY`
-- `GEMINI_API_KEY` (Gemini Live voice; Gemini analyzer if selected)
+- `GEMINI_API_KEY` (Gemini Live voice; Gemini transcriber/analyzer if selected)
 - `ANTHROPIC_API_KEY` (analyzer candidate / fallback)
 
 ## Architecture (data flow)

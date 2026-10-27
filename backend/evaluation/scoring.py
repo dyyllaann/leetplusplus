@@ -69,6 +69,33 @@ def score_transcription(transcription: Transcription, expected: dict[str, Any]) 
     )
 
 
+def code_box_iou(transcription: Transcription, expected: dict[str, Any]) -> float | None:
+    """IoU between the box around all code regions and the expected code box(es).
+    None when the fixture has no code region box."""
+    exp = [r["approx_bbox"] for r in expected["regions"] if r["type"] == "code" and r.get("approx_bbox")]
+    got = [(r.bbox.x1, r.bbox.y1, r.bbox.x2, r.bbox.y2) for r in transcription.regions if r.type == "code"]
+    if not exp:
+        return None
+    if not got:
+        return 0.0
+
+    def union(boxes):
+        return (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                max(b[2] for b in boxes), max(b[3] for b in boxes))
+
+    (ax1, ay1, ax2, ay2), (bx1, by1, bx2, by2) = union(exp), union(got)
+    inter = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1))
+    total = (ax2 - ax1) * (ay2 - ay1) + (bx2 - bx1) * (by2 - by1) - inter
+    return inter / total if total > 0 else 0.0
+
+
+def line_box_coverage(transcription: Transcription) -> float:
+    """Share of code lines that came back with a usable box (line patching needs one per line)."""
+    lines = [ln for r in transcription.regions if r.type == "code" for ln in r.lines]
+    usable = [ln for ln in lines if ln.bbox and ln.bbox.x2 > ln.bbox.x1 and ln.bbox.y2 > ln.bbox.y1]
+    return len(usable) / len(lines) if lines else 0.0
+
+
 def matches(finding: Finding, target: dict[str, Any]) -> bool:
     line_ok = target["line"] == 0 or finding.line == 0 or abs(finding.line - target["line"]) <= LINE_TOLERANCE
     text = f"{finding.category} {finding.message}".lower()

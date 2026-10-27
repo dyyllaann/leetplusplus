@@ -10,9 +10,14 @@ CORS_ORIGINS = [
 	if origin.strip()
 ]
 
+# Provider per role: perceptron | gemini | claude (backend/models/providers).
+# *_MODEL empty = that provider's default model. *_EFFORT: none | low | medium | high.
 TRANSCRIBER = os.getenv("TRANSCRIBER", "perceptron")
-TRANSCRIBER_REASONING = os.getenv("TRANSCRIBER_REASONING", "low")
+TRANSCRIBER_MODEL = os.getenv("TRANSCRIBER_MODEL", "")
+TRANSCRIBER_EFFORT = os.getenv("TRANSCRIBER_EFFORT", "low")
 ANALYZER = os.getenv("ANALYZER", "claude")
+ANALYZER_MODEL = os.getenv("ANALYZER_MODEL", "")
+ANALYZER_EFFORT = os.getenv("ANALYZER_EFFORT", "medium")
 
 # Frame gate (whole-frame, no homography). Diffs are computed on a small grayscale
 # thumbnail; a pixel counts as changed if its value moves more than PIXEL_DELTA.
